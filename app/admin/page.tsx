@@ -27,10 +27,23 @@ export default function AdminPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await fetch("/api/menu");
-        const data = await response.json();
-        setProducts(data.products);
-        setCategories(data.categories);
+        // Tentar carregar do localStorage primeiro
+        const savedProducts = localStorage.getItem("cardapio-products");
+        const savedCategories = localStorage.getItem("cardapio-categories");
+
+        if (savedProducts && savedCategories) {
+          setProducts(JSON.parse(savedProducts));
+          setCategories(JSON.parse(savedCategories));
+        } else {
+          // Se não houver dados salvos, carregar do arquivo padrão
+          const response = await fetch("/api/menu");
+          const data = await response.json();
+          setProducts(data.products);
+          setCategories(data.categories);
+          // Salvar para futuras edições
+          localStorage.setItem("cardapio-products", JSON.stringify(data.products));
+          localStorage.setItem("cardapio-categories", JSON.stringify(data.categories));
+        }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
       }
@@ -72,18 +85,13 @@ export default function AdminPage() {
       : [...products, product];
 
     try {
-      const response = await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products: updatedProducts, categories }),
-      });
+      // Salvar no localStorage
+      localStorage.setItem("cardapio-products", JSON.stringify(updatedProducts));
 
-      if (response.ok) {
-        setProducts(updatedProducts);
-        setEditingProduct(null);
-        setShowForm(false);
-        alert("Produto salvo com sucesso!");
-      }
+      setProducts(updatedProducts);
+      setEditingProduct(null);
+      setShowForm(false);
+      alert("Produto salvo com sucesso!");
     } catch (error) {
       alert("Erro ao salvar produto");
       console.error(error);
@@ -96,16 +104,11 @@ export default function AdminPage() {
     const updatedProducts = products.filter((p) => p.id !== id);
 
     try {
-      const response = await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products: updatedProducts, categories }),
-      });
+      // Salvar no localStorage
+      localStorage.setItem("cardapio-products", JSON.stringify(updatedProducts));
 
-      if (response.ok) {
-        setProducts(updatedProducts);
-        alert("Produto deletado com sucesso!");
-      }
+      setProducts(updatedProducts);
+      alert("Produto deletado com sucesso!");
     } catch (error) {
       alert("Erro ao deletar produto");
       console.error(error);
@@ -126,18 +129,13 @@ export default function AdminPage() {
     const updatedCategories = [...categories, newCategory];
 
     try {
-      const response = await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products, categories: updatedCategories }),
-      });
+      // Salvar no localStorage
+      localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
 
-      if (response.ok) {
-        setCategories(updatedCategories);
-        setNewCategoryName("");
-        setShowNewCategoryForm(false);
-        alert("Categoria criada com sucesso!");
-      }
+      setCategories(updatedCategories);
+      setNewCategoryName("");
+      setShowNewCategoryForm(false);
+      alert("Categoria criada com sucesso!");
     } catch (error) {
       alert("Erro ao criar categoria");
       console.error(error);
@@ -155,18 +153,13 @@ export default function AdminPage() {
     );
 
     try {
-      const response = await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products, categories: updatedCategories }),
-      });
+      // Salvar no localStorage
+      localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
 
-      if (response.ok) {
-        setCategories(updatedCategories);
-        setEditingCategoryId(null);
-        setEditingCategoryName("");
-        alert("Categoria atualizada com sucesso!");
-      }
+      setCategories(updatedCategories);
+      setEditingCategoryId(null);
+      setEditingCategoryName("");
+      alert("Categoria atualizada com sucesso!");
     } catch (error) {
       alert("Erro ao atualizar categoria");
       console.error(error);
@@ -186,16 +179,11 @@ export default function AdminPage() {
     const updatedCategories = categories.filter((cat) => cat.id !== categoryId);
 
     try {
-      const response = await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ products, categories: updatedCategories }),
-      });
+      // Salvar no localStorage
+      localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
 
-      if (response.ok) {
-        setCategories(updatedCategories);
-        alert("Categoria deletada com sucesso!");
-      }
+      setCategories(updatedCategories);
+      alert("Categoria deletada com sucesso!");
     } catch (error) {
       alert("Erro ao deletar categoria");
       console.error(error);
