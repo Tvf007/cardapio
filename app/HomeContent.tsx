@@ -3,16 +3,31 @@
 import { useState, useEffect } from "react";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
 import { CategoryFilter, MenuGrid } from "@/components";
-import { categories, menuItems } from "@/data/menu";
+import { categories as defaultCategories, menuItems as defaultMenuItems } from "@/data/menu";
+import { MenuItem, Category } from "@/types";
 
 export function HomeContent() {
   const [logo, setLogo] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>(defaultCategories);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(defaultMenuItems);
 
   useEffect(() => {
+    // Carregar logo
     const savedLogo = localStorage.getItem("padaria-logo");
     if (savedLogo) {
       setLogo(savedLogo);
+    }
+
+    // Carregar produtos e categorias do localStorage
+    const savedProducts = localStorage.getItem("cardapio-products");
+    const savedCategories = localStorage.getItem("cardapio-categories");
+
+    if (savedProducts) {
+      setMenuItems(JSON.parse(savedProducts));
+    }
+    if (savedCategories) {
+      setCategories(JSON.parse(savedCategories));
     }
   }, []);
 
