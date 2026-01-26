@@ -19,16 +19,35 @@ export function HomeContent() {
       setLogo(savedLogo);
     }
 
-    // Carregar produtos e categorias do localStorage
-    const savedProducts = localStorage.getItem("cardapio-products");
-    const savedCategories = localStorage.getItem("cardapio-categories");
+    // Carregar produtos e categorias do Supabase
+    const loadData = async () => {
+      try {
+        const response = await fetch("/api/sync");
+        const data = await response.json();
 
-    if (savedProducts) {
-      setMenuItems(JSON.parse(savedProducts));
-    }
-    if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    }
+        if (data.categories) {
+          setCategories(data.categories);
+        }
+        if (data.products) {
+          setMenuItems(data.products);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+
+        // Fallback para localStorage se Supabase falhar
+        const savedProducts = localStorage.getItem("cardapio-products");
+        const savedCategories = localStorage.getItem("cardapio-categories");
+
+        if (savedProducts) {
+          setMenuItems(JSON.parse(savedProducts));
+        }
+        if (savedCategories) {
+          setCategories(JSON.parse(savedCategories));
+        }
+      }
+    };
+
+    loadData();
   }, []);
 
   const filteredItems = activeCategory

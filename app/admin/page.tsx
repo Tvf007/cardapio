@@ -85,8 +85,15 @@ export default function AdminPage() {
       : [...products, product];
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage e Supabase
       localStorage.setItem("cardapio-products", JSON.stringify(updatedProducts));
+
+      // Sincronizar com Supabase
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products: updatedProducts, categories }),
+      });
 
       setProducts(updatedProducts);
       setEditingProduct(null);
@@ -104,8 +111,15 @@ export default function AdminPage() {
     const updatedProducts = products.filter((p) => p.id !== id);
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage e Supabase
       localStorage.setItem("cardapio-products", JSON.stringify(updatedProducts));
+
+      // Sincronizar com Supabase
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products: updatedProducts, categories }),
+      });
 
       setProducts(updatedProducts);
       alert("Produto deletado com sucesso!");
@@ -129,8 +143,15 @@ export default function AdminPage() {
     const updatedCategories = [...categories, newCategory];
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage e Supabase
       localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
+
+      // Sincronizar com Supabase
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products, categories: updatedCategories }),
+      });
 
       setCategories(updatedCategories);
       setNewCategoryName("");
@@ -153,8 +174,15 @@ export default function AdminPage() {
     );
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage e Supabase
       localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
+
+      // Sincronizar com Supabase
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products, categories: updatedCategories }),
+      });
 
       setCategories(updatedCategories);
       setEditingCategoryId(null);
@@ -179,8 +207,15 @@ export default function AdminPage() {
     const updatedCategories = categories.filter((cat) => cat.id !== categoryId);
 
     try {
-      // Salvar no localStorage
+      // Salvar no localStorage e Supabase
       localStorage.setItem("cardapio-categories", JSON.stringify(updatedCategories));
+
+      // Sincronizar com Supabase
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products, categories: updatedCategories }),
+      });
 
       setCategories(updatedCategories);
       alert("Categoria deletada com sucesso!");
