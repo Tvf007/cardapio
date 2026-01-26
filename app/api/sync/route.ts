@@ -38,35 +38,31 @@ export async function POST(request: NextRequest) {
   try {
     const { products, categories } = await request.json();
 
-    // Limpar dados antigos
-    await supabase.from("menu_items").delete().gte("id", "");
-    await supabase.from("categories").delete().gte("id", "");
-
-    // Inserir categorias
-    if (categories.length > 0) {
+    // Upsert categorias (atualiza se existe, insere se novo)
+    if (categories && categories.length > 0) {
       const { error: catError } = await supabase
         .from("categories")
-        .insert(categories);
+        .upsert(categories, { onConflict: "id" });
 
       if (catError) {
-        console.error("Erro ao inserir categorias:", catError);
+        console.error("Erro ao salvar categorias:", catError);
         return NextResponse.json(
-          { error: "Erro ao salvar categorias" },
+          { error: "Erro ao salvar categorias", details: catError.message },
           { status: 500 }
         );
       }
     }
 
-    // Inserir produtos
-    if (products.length > 0) {
+    // Upsert produtos (atualiza se existe, insere se novo)
+    if (products && products.length > 0) {
       const { error: prodError } = await supabase
         .from("menu_items")
-        .insert(products);
+        .upsert(products, { onConflict: "id" });
 
       if (prodError) {
-        console.error("Erro ao inserir produtos:", prodError);
+        console.error("Erro ao salvar produtos:", prodError);
         return NextResponse.json(
-          { error: "Erro ao salvar produtos" },
+          { error: "Erro ao salvar produtos", details: prodError.message },
           { status: 500 }
         );
       }
@@ -75,11 +71,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Dados sincronizados com sucesso!",
+      categoriesCount: categories?.length || 0,
+      productsCount: products?.length || 0,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro na sincronização:", error);
     return NextResponse.json(
-      { error: "Erro ao sincronizar dados" },
+      { error: "Erro ao sincronizar dados", details: error.message },
       { status: 500 }
     );
   }
