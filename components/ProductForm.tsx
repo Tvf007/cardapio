@@ -77,7 +77,7 @@ export function ProductForm({
                 />
                 <RippleButton
                   type="button"
-                  onClick={(e) => {
+                  onClick={() => {
                     setImagePreview("");
                     setFormData({ ...formData, image: "" });
                   }}
