@@ -1,12 +1,13 @@
 "use client";
 
-import { MenuItem } from "@/types";
+import { MenuItem } from "@/lib/validation";
 
 interface AdminProductListProps {
   products: MenuItem[];
   categories: Array<{ id: string; name: string }>;
   onEdit: (product: MenuItem) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
+  isLoading?: boolean;
 }
 
 export function AdminProductList({
@@ -14,6 +15,7 @@ export function AdminProductList({
   categories,
   onEdit,
   onDelete,
+  isLoading = false,
 }: AdminProductListProps) {
   const getCategoryName = (categoryId: string) => {
     return categories.find((c) => c.id === categoryId)?.name || "N/A";

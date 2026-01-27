@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { validateArray, MenuItemSchema, CategorySchema } from "@/lib/validation";
 
 export async function GET() {
   try {
@@ -36,7 +37,33 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { products, categories } = await request.json();
+    const body = await request.json();
+    const { products, categories } = body;
+
+    // Validar dados antes de salvar
+    try {
+      if (!Array.isArray(categories) || !Array.isArray(products)) {
+        return NextResponse.json(
+          { error: "Categories e products devem ser arrays" },
+          { status: 400 }
+        );
+      }
+
+      // Validar categorias
+      if (categories.length > 0) {
+        validateArray(CategorySchema, categories, "categories");
+      }
+
+      // Validar produtos
+      if (products.length > 0) {
+        validateArray(MenuItemSchema, products, "products");
+      }
+    } catch (validationError) {
+      return NextResponse.json(
+        { error: validationError instanceof Error ? validationError.message : "Erro de validação" },
+        { status: 400 }
+      );
+    }
 
     // Upsert categorias (atualiza se existe, insere se novo)
     if (categories && categories.length > 0) {
@@ -45,7 +72,6 @@ export async function POST(request: NextRequest) {
         .upsert(categories, { onConflict: "id" });
 
       if (catError) {
-        console.error("Erro ao salvar categorias:", catError);
         return NextResponse.json(
           { error: "Erro ao salvar categorias", details: catError.message },
           { status: 500 }
@@ -60,7 +86,6 @@ export async function POST(request: NextRequest) {
         .upsert(products, { onConflict: "id" });
 
       if (prodError) {
-        console.error("Erro ao salvar produtos:", prodError);
         return NextResponse.json(
           { error: "Erro ao salvar produtos", details: prodError.message },
           { status: 500 }

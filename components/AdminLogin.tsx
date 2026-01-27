@@ -3,28 +3,41 @@
 import { useState } from "react";
 
 interface AdminLoginProps {
-  onLogin: (password: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export function AdminLogin({ onLogin }: AdminLoginProps) {
+export function AdminLogin({ onLogin, isLoading: parentLoading = false }: AdminLoginProps) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    setTimeout(() => {
+    try {
+      if (!email) {
+        setError("Digite seu email");
+        setIsLoading(false);
+        return;
+      }
       if (!password) {
         setError("Digite sua senha");
-      } else {
-        onLogin(password);
+        setIsLoading(false);
+        return;
       }
-      setIsLoading(false);
-    }, 300);
 
-    setPassword("");
+      await onLogin(email, password);
+      setEmail("");
+      setPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao fazer login");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,7 +63,34 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-3">
-                Senha de Acesso
+                Email de Acesso
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="seu@email.com"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none transition-all duration-200 bg-white text-gray-900 placeholder-gray-400"
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#7c4e42';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(124, 78, 66, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                <span className="absolute right-3 top-3 text-xl">✉️</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-3">
+                Senha
               </label>
               <div className="relative">
                 <input
@@ -61,11 +101,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
                     setError("");
                   }}
                   placeholder="Digite sua senha"
-                  autoFocus
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none transition-all duration-200 bg-white text-gray-900 placeholder-gray-400"
-                  style={{
-                    '--focus-border': '#7c4e42',
-                  } as any}
                   onFocus={(e) => {
                     e.target.style.borderColor = '#7c4e42';
                     e.target.style.boxShadow = '0 0 0 2px rgba(124, 78, 66, 0.2)';

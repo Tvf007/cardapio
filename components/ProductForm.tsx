@@ -1,14 +1,15 @@
 "use client";
 
-import { MenuItem } from "@/types";
+import { MenuItem } from "@/lib/validation";
 import { useState } from "react";
 import { RippleButton } from "./RippleButton";
 
 interface ProductFormProps {
   product?: MenuItem;
   categories: Array<{ id: string; name: string }>;
-  onSubmit: (product: MenuItem) => void;
+  onSubmit: (product: MenuItem) => Promise<void> | void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 export function ProductForm({
@@ -16,6 +17,7 @@ export function ProductForm({
   categories,
   onSubmit,
   onCancel,
+  isLoading = false,
 }: ProductFormProps) {
   const [formData, setFormData] = useState<MenuItem>(
     product || {

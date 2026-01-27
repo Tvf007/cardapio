@@ -4,50 +4,24 @@ import { useState, useEffect } from "react";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
 import { CategoryFilter, MenuGrid } from "@/components";
 import { categories as defaultCategories, menuItems as defaultMenuItems } from "@/data/menu";
-import { MenuItem, Category } from "@/types";
+import { useCardapio } from "@/contexts/CardapioContext";
+import { MenuItem, Category } from "@/lib/validation";
 
 export function HomeContent() {
   const [logo, setLogo] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>(defaultCategories);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(defaultMenuItems);
+  const cardapio = useCardapio();
+
+  // Usar categorias e produtos do context, com fallback para dados padrão
+  const categories = cardapio.categories.length > 0 ? cardapio.categories : defaultCategories;
+  const menuItems = cardapio.products.length > 0 ? cardapio.products : defaultMenuItems;
 
   useEffect(() => {
-    // Carregar logo
+    // Carregar logo do localStorage
     const savedLogo = localStorage.getItem("padaria-logo");
     if (savedLogo) {
       setLogo(savedLogo);
     }
-
-    // Carregar produtos e categorias do Supabase
-    const loadData = async () => {
-      try {
-        const response = await fetch("/api/sync");
-        const data = await response.json();
-
-        if (data.categories) {
-          setCategories(data.categories);
-        }
-        if (data.products) {
-          setMenuItems(data.products);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-
-        // Fallback para localStorage se Supabase falhar
-        const savedProducts = localStorage.getItem("cardapio-products");
-        const savedCategories = localStorage.getItem("cardapio-categories");
-
-        if (savedProducts) {
-          setMenuItems(JSON.parse(savedProducts));
-        }
-        if (savedCategories) {
-          setCategories(JSON.parse(savedCategories));
-        }
-      }
-    };
-
-    loadData();
   }, []);
 
   const filteredItems = activeCategory

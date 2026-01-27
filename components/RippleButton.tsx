@@ -4,13 +4,14 @@ import { useState, MouseEvent } from 'react';
 
 interface RippleButtonProps {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: () => void | Promise<void>;
   className?: string;
   style?: React.CSSProperties;
   onMouseEnter?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   title?: string;
   type?: 'button' | 'submit';
+  disabled?: boolean;
 }
 
 export function RippleButton({
@@ -22,6 +23,7 @@ export function RippleButton({
   onMouseLeave,
   title,
   type = 'button',
+  disabled = false,
 }: RippleButtonProps) {
   const [ripples, setRipples] = useState<Array<{
     x: number;
@@ -52,6 +54,7 @@ export function RippleButton({
     <button
       type={type}
       onClick={handleClick}
+      disabled={disabled}
       className={`relative overflow-hidden ${className}`}
       style={style}
       onMouseEnter={onMouseEnter}
