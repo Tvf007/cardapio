@@ -134,30 +134,45 @@ export function useSyncedData(): SyncedDataState & {
       console.warn("BroadcastChannel não suportado:", error);
     }
 
-    // Setup de Realtime do Supabase
-    const channel = supabase
-      .channel("cardapio-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "categories" },
-        () => {
-          // Quando houver mudança em categories, sincronizar tudo
-          refresh();
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "menu_items" },
-        () => {
-          // Quando houver mudança em menu_items, sincronizar tudo
-          refresh();
-        }
-      )
-      .subscribe();
+    // Setup de Realtime do Supabase (com fallback)
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel("cardapio-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "categories" },
+          () => {
+            // Quando houver mudança em categories, sincronizar tudo
+            refresh();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "menu_items" },
+          () => {
+            // Quando houver mudança em menu_items, sincronizar tudo
+            refresh();
+          }
+        )
+        .subscribe();
 
-    unsubscribeRef.current = () => {
-      channel.unsubscribe();
-    };
+      unsubscribeRef.current = () => {
+        if (channel) {
+          channel.unsubscribe();
+        }
+      };
+    } catch (error) {
+      console.warn("Supabase Realtime indisponível, usando polling:", error);
+      // Fallback: fazer poll a cada 5 segundos
+      const pollInterval = setInterval(() => {
+        refresh();
+      }, 5000);
+
+      unsubscribeRef.current = () => {
+        clearInterval(pollInterval);
+      };
+    }
 
     // Cleanup
     return () => {
