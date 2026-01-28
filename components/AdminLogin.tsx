@@ -12,6 +12,7 @@ export function AdminLogin({ onLogin, isLoading: parentLoading = false }: AdminL
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +31,31 @@ export function AdminLogin({ onLogin, isLoading: parentLoading = false }: AdminL
         return;
       }
 
-      await onLogin(email, password);
-      setEmail("");
-      setPassword("");
+      if (isSignUp) {
+        // Criar conta
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Erro ao criar conta");
+        }
+
+        setError("");
+        alert("✅ Conta criada com sucesso! Faça login agora.");
+        setIsSignUp(false);
+        setPassword("");
+      } else {
+        // Fazer login
+        await onLogin(email, password);
+        setEmail("");
+        setPassword("");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao fazer login");
+      setError(err instanceof Error ? err.message : "Erro ao processar");
     } finally {
       setIsLoading(false);
     }
@@ -53,10 +74,10 @@ export function AdminLogin({ onLogin, isLoading: parentLoading = false }: AdminL
           {/* Header */}
           <div className="px-8 py-12 text-center" style={{ background: 'linear-gradient(to right, #7c4e42, #a67c5a)' }}>
             <div className="inline-block w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <span className="text-4xl">🔐</span>
+              <span className="text-4xl">{isSignUp ? '✨' : '🔐'}</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Painel Admin</h1>
-            <p className="text-white opacity-90">Acesso Restrito</p>
+            <p className="text-white opacity-90">{isSignUp ? 'Criar nova conta' : 'Acesso Restrito'}</p>
           </div>
 
           {/* Form */}
@@ -145,18 +166,46 @@ export function AdminLogin({ onLogin, isLoading: parentLoading = false }: AdminL
               {isLoading ? (
                 <>
                   <span className="animate-spin">⏳</span>
-                  Entrando...
+                  {isSignUp ? 'Criando conta...' : 'Entrando...'}
                 </>
               ) : (
                 <>
-                  <span>→</span>
-                  Entrar
+                  <span>{isSignUp ? '✨' : '→'}</span>
+                  {isSignUp ? 'Criar Conta' : 'Entrar'}
                 </>
               )}
             </button>
 
-            <p className="text-center text-sm text-gray-600">
-              Apenas administradores têm acesso
+            <p className="text-center text-sm text-gray-600 mt-4">
+              {isSignUp ? (
+                <>
+                  Já tem conta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(false);
+                      setError("");
+                    }}
+                    className="text-orange-600 font-semibold hover:underline"
+                  >
+                    Faça login
+                  </button>
+                </>
+              ) : (
+                <>
+                  Não tem conta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setError("");
+                    }}
+                    className="text-orange-600 font-semibold hover:underline"
+                  >
+                    Crie uma
+                  </button>
+                </>
+              )}
             </p>
           </form>
         </div>
