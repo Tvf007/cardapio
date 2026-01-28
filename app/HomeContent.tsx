@@ -31,10 +31,13 @@ export function HomeContent() {
   return (
     <div className="min-h-screen bg-amber-50">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-800 shadow-lg">
+      <header className="sticky top-0 z-50 border-b shadow-lg" style={{
+        background: 'linear-gradient(to right, #7c4e42, #5a3a2f)',
+        borderColor: '#4a2e24'
+      }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#7c4e42' }}>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#d4a574' }}>
               {logo ? (
                 <img
                   src={logo}
@@ -49,7 +52,7 @@ export function HomeContent() {
               <h1 className="text-5xl font-bold text-white tracking-tight">
                 Cardápio
               </h1>
-              <p className="text-sm text-blue-100 font-medium mt-2">PADARIA Freitas</p>
+              <p className="text-sm font-medium mt-2" style={{ color: '#f5e6d3' }}>PADARIA Freitas</p>
             </div>
           </div>
         </div>
@@ -79,7 +82,7 @@ export function HomeContent() {
         {/* Menu Grid */}
         <div>
           {filteredItems.length > 0 ? (
-            <MenuGrid items={filteredItems} />
+            <MenuGrid items={filteredItems} categories={categories} />
           ) : (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">Nenhum item encontrado nesta categoria.</p>
