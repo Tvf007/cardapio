@@ -13,7 +13,11 @@ export const MenuItemSchema = z.object({
   description: z.string().min(0),
   price: z.coerce.number().positive("Preço deve ser maior que 0"),
   category: z.string().min(1, "Categoria é obrigatória"),
-  image: z.string().url().or(z.string().startsWith("data:")).optional().default(""),
+  image: z.union([
+    z.string().url(),
+    z.string().startsWith("data:"),
+    z.string().max(0) // permite string vazia
+  ]).optional().default(""),
   available: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
@@ -30,7 +34,7 @@ export const SingleMenuItemSchema = MenuItemSchema;
 
 // Tipos derivados dos schemas
 export type Category = z.infer<typeof CategorySchema>;
-export type MenuItem = z.infer<typeof MenuItemSchema>;
+export type MenuItem = Omit<z.infer<typeof MenuItemSchema>, "image"> & { image?: string };
 export type SyncResponse = z.infer<typeof SyncResponseSchema>;
 
 // Função para validar e fazer parse seguro

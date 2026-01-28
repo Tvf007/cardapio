@@ -1,4 +1,4 @@
-import { MenuItem as MenuItemType } from "@/types";
+import { MenuItem as MenuItemType } from "@/lib/validation";
 import { MenuItem } from "./MenuItem";
 
 interface MenuGridProps {

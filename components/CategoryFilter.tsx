@@ -1,4 +1,4 @@
-import { Category } from "@/types";
+import { Category } from "@/lib/validation";
 import { RippleButton } from "./RippleButton";
 
 interface CategoryFilterProps {

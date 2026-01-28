@@ -85,13 +85,14 @@ export function useSyncedData(): SyncedDataState & {
       // Tentar carregar do Supabase
       const data = await syncFromSupabase();
 
-      setState({
+      setState((prev) => ({
+        ...prev,
         categories: data.categories,
         products: data.products,
         loading: false,
         error: null,
         lastSync: new Date(),
-      });
+      }));
 
       // Salvar em localStorage para fallback
       saveToLocalStorage(data.categories, data.products);
@@ -102,13 +103,14 @@ export function useSyncedData(): SyncedDataState & {
       // Fallback para localStorage
       const fallback = loadFromLocalStorage();
 
-      setState({
+      setState((prev) => ({
+        ...prev,
         categories: fallback.categories,
         products: fallback.products,
         loading: false,
         error: `Sincronização offline: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         lastSync: new Date(),
-      });
+      }));
 
       // Notificar outras abas do fallback
       broadcastUpdate(fallback.categories, fallback.products);
