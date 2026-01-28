@@ -11,6 +11,7 @@ export interface SyncedDataState {
   loading: boolean;
   error: string | null;
   lastSync: Date | null;
+  realtimeConnected: boolean;
 }
 
 // Tipo para mensagens do BroadcastChannel
@@ -32,10 +33,12 @@ export function useSyncedData(): SyncedDataState & {
     loading: true,
     error: null,
     lastSync: null,
+    realtimeConnected: false,
   });
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Atualizar localStorage para fallback
   const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[]) => {
@@ -134,7 +137,7 @@ export function useSyncedData(): SyncedDataState & {
       console.warn("BroadcastChannel não suportado:", error);
     }
 
-    // Setup de Realtime do Supabase (com fallback)
+    // Setup de Realtime do Supabase
     let channel: any = null;
     try {
       channel = supabase
@@ -143,7 +146,7 @@ export function useSyncedData(): SyncedDataState & {
           "postgres_changes",
           { event: "*", schema: "public", table: "categories" },
           () => {
-            // Quando houver mudança em categories, sincronizar tudo
+            console.log("📡 [Realtime] Mudança detectada em categories");
             refresh();
           }
         )
@@ -151,11 +154,24 @@ export function useSyncedData(): SyncedDataState & {
           "postgres_changes",
           { event: "*", schema: "public", table: "menu_items" },
           () => {
-            // Quando houver mudança em menu_items, sincronizar tudo
+            console.log("📡 [Realtime] Mudança detectada em menu_items");
             refresh();
           }
         )
-        .subscribe();
+        .on("system", { event: "down" }, () => {
+          console.warn("❌ [Realtime] Desconectado do servidor");
+          setState((prev) => ({ ...prev, realtimeConnected: false }));
+        })
+        .on("system", { event: "up" }, () => {
+          console.log("✅ [Realtime] Conectado ao servidor");
+          setState((prev) => ({ ...prev, realtimeConnected: true }));
+        })
+        .subscribe((status) => {
+          console.log("🔗 [Realtime] Status de subscrição:", status);
+          if (status === "SUBSCRIBED") {
+            setState((prev) => ({ ...prev, realtimeConnected: true }));
+          }
+        });
 
       unsubscribeRef.current = () => {
         if (channel) {
@@ -163,21 +179,24 @@ export function useSyncedData(): SyncedDataState & {
         }
       };
     } catch (error) {
-      console.warn("Supabase Realtime indisponível, usando polling:", error);
-      // Fallback: fazer poll a cada 5 segundos
-      const pollInterval = setInterval(() => {
-        refresh();
-      }, 5000);
-
-      unsubscribeRef.current = () => {
-        clearInterval(pollInterval);
-      };
+      console.error("❌ [Realtime] Falha ao conectar:", error);
+      setState((prev) => ({ ...prev, realtimeConnected: false }));
     }
+
+    // Polling contínuo (a cada 3 segundos) - garante atualização entre aparelhos mesmo sem Realtime
+    console.log("📡 [Polling] Iniciando polling contínuo a cada 3 segundos");
+    pollIntervalRef.current = setInterval(() => {
+      console.log("📡 [Polling] Sincronizando dados...");
+      refresh();
+    }, 3000);
 
     // Cleanup
     return () => {
       unsubscribeRef.current?.();
       broadcastChannelRef.current?.close();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
     };
   }, [refresh]);
 

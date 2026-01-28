@@ -22,9 +22,22 @@ export async function GET() {
       );
     }
 
+    // Normalizar preços e disponibilidade
+    const normalizePrice = (price: any): number => {
+      if (typeof price === 'number') return price;
+      if (typeof price === 'string') return parseFloat(price) || 0;
+      return 0;
+    };
+
+    const normalizedProducts = (products || []).map((p: any) => ({
+      ...p,
+      price: normalizePrice(p.price),
+      available: p.available === true || p.available === 1,
+    }));
+
     return NextResponse.json({
       categories: categories || [],
-      products: products || [],
+      products: normalizedProducts,
     });
   } catch (error) {
     console.error("Erro na API de sincronização:", error);
