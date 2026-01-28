@@ -299,8 +299,13 @@ async function executeSyncFrom(
       throw new Error("Resposta invalida: faltam categories ou products");
     }
 
+    // Filtrar categorias inválidas (com ID nulo ou undefined)
+    const validCategories = (data.categories || []).filter(
+      (c: any) => c && c.id && c.id !== null && c.id !== undefined
+    );
+
     const syncResult: SyncResult = {
-      categories: data.categories || [],
+      categories: validCategories,
       products: data.products || [],
       timestamp: Date.now(),
     };

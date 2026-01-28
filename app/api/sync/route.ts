@@ -26,6 +26,10 @@ export async function GET() {
 
     console.log(`[SYNC GET] Encontrados ${categories?.length || 0} categorias e ${products?.length || 0} produtos`);
 
+    // Filtrar categorias inválidas (com ID nulo ou undefined)
+    const validCategories = (categories || []).filter((cat: any) => cat && cat.id && cat.id !== null && cat.id !== undefined);
+    console.log(`[SYNC GET] Após filtragem: ${validCategories.length} categorias válidas`);
+
     // Normalizar precos, disponibilidade e imagens
     const normalizePrice = (price: any): number => {
       if (typeof price === 'number') return price;
@@ -66,7 +70,7 @@ export async function GET() {
     console.log(`[SYNC GET] ${productsWithImages.length} produtos tem imagem definida`);
 
     return NextResponse.json({
-      categories: categories || [],
+      categories: validCategories,
       products: normalizedProducts,
     });
   } catch (error) {
