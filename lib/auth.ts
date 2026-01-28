@@ -7,57 +7,49 @@ export interface AuthUser {
 }
 
 // Credenciais de teste para desenvolvimento
-const DEMO_EMAIL = "admin@cardapio.local";
-const DEMO_PASSWORD = "CaixaFreitas123";
+const DEMO_PASSWORD = "caixa 123";
 
-// Fazer login com email e senha
-export async function loginWithEmail(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
+// Fazer login com apenas senha
+export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
-    // Permitir login de teste sem Supabase Auth
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      console.log("✅ Demo login successful");
+    // Permitir login de teste apenas com senha
+    if (password === DEMO_PASSWORD) {
+      const user: AuthUser = {
+        id: "admin-001",
+        email: "admin@cardapio.local",
+        isAdmin: true,
+      };
+      // Salvar no localStorage para manter sessão
+      if (typeof window !== "undefined") {
+        localStorage.setItem("admin-user", JSON.stringify(user));
+      }
+      console.log("✅ Login bem-sucedido");
       return {
-        user: {
-          id: "demo-admin-001",
-          email: email,
-          isAdmin: true,
-        },
+        user,
         error: null,
       };
     }
 
-    // Tentar fazer login normal com Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { user: null, error: error.message };
-    }
-
-    if (!data.user) {
-      return { user: null, error: "Usuário não encontrado" };
-    }
-
-    // Verificar se é admin (pode ser feito verificando um perfil no Supabase ou um claim customizado)
-    // Por enquanto, considerar qualquer usuário logado como admin da sua conta
-    return {
-      user: {
-        id: data.user.id,
-        email: data.user.email || "",
-        isAdmin: true, // Você pode adicionar lógica aqui para verificar perfil
-      },
-      error: null,
-    };
+    return { user: null, error: "Senha incorreta" };
   } catch (error) {
     return { user: null, error: error instanceof Error ? error.message : "Erro ao fazer login" };
   }
 }
 
+// Fazer login com email e senha (mantido para compatibilidade)
+export async function loginWithEmail(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
+  return loginWithPassword(password);
+}
+
 // Fazer logout
 export async function logout(): Promise<{ error: string | null }> {
   try {
+    // Limpar session do localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("admin-user");
+    }
+
+    // Tentar fazer logout no Supabase também
     const { error } = await supabase.auth.signOut();
     return { error: error?.message || null };
   } catch (error) {
@@ -68,6 +60,13 @@ export async function logout(): Promise<{ error: string | null }> {
 // Obter usuário atualmente logado
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
+    // Verificar se existe usuário no localStorage (session simples)
+    const savedUser = localStorage.getItem("admin-user");
+    if (savedUser) {
+      return JSON.parse(savedUser);
+    }
+
+    // Tentar obter do Supabase
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       return null;
