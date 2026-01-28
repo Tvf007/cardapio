@@ -13,7 +13,7 @@ export const MenuItemSchema = z.object({
   description: z.string().min(0),
   price: z.coerce.number().positive("Preço deve ser maior que 0"),
   category: z.string().min(1, "Categoria é obrigatória"),
-  image: z.string().url().or(z.string().startsWith("data:")),
+  image: z.string().url().or(z.string().startsWith("data:")).optional().default(""),
   available: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

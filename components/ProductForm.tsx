@@ -24,7 +24,7 @@ export function ProductForm({
       id: Date.now().toString(),
       name: "",
       description: "",
-      price: undefined as any,
+      price: 0,
       category: categories[0]?.id || "1",
       available: true,
       image: "",

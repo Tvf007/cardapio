@@ -22,7 +22,7 @@ export function MenuItem({ item }: MenuItemProps) {
     >
       {/* Image Container */}
       <div className="relative h-52 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden group-hover:border-b-4" style={{ "--hover-border": '#7c4e42' } as any}>
-        {item.image ? (
+        {item.image && item.image.trim() !== "" ? (
           <img
             src={item.image}
             alt={item.name}
