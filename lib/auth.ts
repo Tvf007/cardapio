@@ -6,9 +6,27 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
+// Credenciais de teste para desenvolvimento
+const DEMO_EMAIL = "admin@cardapio.local";
+const DEMO_PASSWORD = "CaixaFreitas123";
+
 // Fazer login com email e senha
 export async function loginWithEmail(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
+    // Permitir login de teste sem Supabase Auth
+    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      console.log("✅ Demo login successful");
+      return {
+        user: {
+          id: "demo-admin-001",
+          email: email,
+          isAdmin: true,
+        },
+        error: null,
+      };
+    }
+
+    // Tentar fazer login normal com Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
