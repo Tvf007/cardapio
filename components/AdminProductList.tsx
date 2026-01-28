@@ -38,7 +38,7 @@ export function AdminProductList({
             <tr key={product.id} className="border-b hover:bg-gray-50 transition-colors">
               <td className="px-6 py-4 text-sm font-medium text-gray-900">{product.name}</td>
               <td className="px-6 py-4 text-sm text-gray-700">{getCategoryName(product.category)}</td>
-              <td className="px-6 py-4 text-sm font-semibold text-green-600">R$ {product.price.toFixed(2)}</td>
+              <td className="px-6 py-4 text-sm font-semibold text-green-600">R$ {typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'}</td>
               <td className="px-6 py-3 text-sm">
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold ${

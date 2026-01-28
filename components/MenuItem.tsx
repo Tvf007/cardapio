@@ -1,4 +1,4 @@
-import { MenuItem as MenuItemType } from "@/types";
+import { MenuItem as MenuItemType } from "@/lib/validation";
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -55,7 +55,7 @@ export function MenuItem({ item }: MenuItemProps) {
         {/* Price Badge */}
         <div className="absolute top-3 right-3 bg-white shadow-md px-4 py-2 rounded-md">
           <span className="text-fluid-lg font-bold text-green-600">
-            R$ {item.price.toFixed(2)}
+            R$ {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
           </span>
         </div>
       </div>
