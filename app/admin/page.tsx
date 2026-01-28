@@ -200,7 +200,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => logoInputRef.current?.click()}
-                className="relative w-12 h-12 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer"
+                className="relative w-16 h-16 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer"
                 style={{ backgroundColor: "#7c4e42" }}
                 title="Clique para alterar logo"
               >
@@ -211,7 +211,7 @@ export default function AdminPage() {
                     className="w-full h-full object-cover rounded-lg"
                   />
                 ) : (
-                  <span className="text-xl">🍽️</span>
+                  <span className="text-3xl">🍽️</span>
                 )}
                 <span className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all duration-200">
                   <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">↻</span>
@@ -395,7 +395,7 @@ export default function AdminPage() {
                             type="text"
                             value={editingCategoryName}
                             onChange={(e) => setEditingCategoryName(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 font-semibold"
                           />
                           <div className="flex gap-2 ml-4">
                             <RippleButton

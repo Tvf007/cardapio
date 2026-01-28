@@ -37,7 +37,7 @@ export function HomeContent() {
       }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#d4a574' }}>
+            <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#d4a574' }}>
               {logo ? (
                 <img
                   src={logo}
@@ -45,7 +45,7 @@ export function HomeContent() {
                   className="w-full h-full object-cover rounded-xl"
                 />
               ) : (
-                <span className="text-2xl">🍽️</span>
+                <span className="text-6xl">🍽️</span>
               )}
             </div>
             <div>

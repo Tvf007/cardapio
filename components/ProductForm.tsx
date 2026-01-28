@@ -183,29 +183,26 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Preço (R$)
           </label>
-          <div className="relative flex items-center">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold text-sm pointer-events-none z-10">R$</span>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.price || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : undefined as any })
-              }
-              placeholder="0,00"
-              className="w-full pl-12 pr-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
-              onFocus={(e) => {
-                e.target.style.borderColor = '#7c4e42';
-                e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-                e.target.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#d1d5db';
-                e.target.style.boxShadow = 'none';
-                e.target.style.animation = 'none';
-              }}
-            />
-          </div>
+          <input
+            type="number"
+            step="0.01"
+            value={formData.price || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : undefined as any })
+            }
+            placeholder="0,00"
+            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
+            onFocus={(e) => {
+              e.target.style.borderColor = '#7c4e42';
+              e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
+              e.target.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#d1d5db';
+              e.target.style.boxShadow = 'none';
+              e.target.style.animation = 'none';
+            }}
+          />
         </div>
       </div>
 
