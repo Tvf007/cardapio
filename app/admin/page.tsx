@@ -329,6 +329,160 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Seção de Gerenciamento de Categorias */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-12">
+          <div className="border-b border-gray-100 px-8 py-6 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">📂 Categorias</h3>
+            {!showNewCategoryForm && (
+              <RippleButton
+                onClick={() => setShowNewCategoryForm(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                + Nova Categoria
+              </RippleButton>
+            )}
+          </div>
+
+          {showNewCategoryForm && (
+            <div className="px-8 py-6 bg-green-50 border-b border-green-100">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Nome da categoria"
+                  className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <RippleButton
+                  onClick={handleAddCategory}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700"
+                >
+                  Adicionar
+                </RippleButton>
+                <RippleButton
+                  onClick={() => {
+                    setShowNewCategoryForm(false);
+                    setNewCategoryName("");
+                  }}
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-400"
+                >
+                  Cancelar
+                </RippleButton>
+              </div>
+            </div>
+          )}
+
+          <div className="px-8 py-6 space-y-2">
+            {cardapio.categories.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Nenhuma categoria criada ainda</p>
+            ) : (
+              cardapio.categories.map((category) => (
+                <div key={category.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors">
+                  {editingCategoryId === category.id ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        className="flex-1 px-3 py-1 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2 ml-4">
+                        <RippleButton
+                          onClick={() => handleEditCategory(category.id)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
+                        >
+                          ✓
+                        </RippleButton>
+                        <RippleButton
+                          onClick={() => {
+                            setEditingCategoryId(null);
+                            setEditingCategoryName("");
+                          }}
+                          className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-medium hover:bg-gray-400"
+                        >
+                          ✕
+                        </RippleButton>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-gray-900">{category.name}</span>
+                      <div className="flex gap-2">
+                        <RippleButton
+                          onClick={() => {
+                            setEditingCategoryId(category.id);
+                            setEditingCategoryName(category.name);
+                          }}
+                          className="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-200"
+                        >
+                          Editar
+                        </RippleButton>
+                        <RippleButton
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-200"
+                        >
+                          Deletar
+                        </RippleButton>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Seção de Produtos */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="border-b border-gray-100 px-8 py-6 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">🍽️ Produtos</h3>
+            {!showForm && (
+              <RippleButton
+                onClick={() => {
+                  setEditingProduct(null);
+                  setShowForm(true);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                + Novo Produto
+              </RippleButton>
+            )}
+          </div>
+
+          {showForm && (
+            <div className="px-8 py-6 bg-blue-50 border-b border-blue-100">
+              <ProductForm
+                onSave={handleSaveProduct}
+                onCancel={() => {
+                  setShowForm(false);
+                  setEditingProduct(null);
+                }}
+                initialProduct={editingProduct || undefined}
+                categories={cardapio.categories}
+              />
+            </div>
+          )}
+
+          <div>
+            {cardapio.products.length === 0 ? (
+              <div className="px-8 py-12 text-center">
+                <p className="text-gray-500 text-lg">Nenhum produto cadastrado ainda</p>
+                <p className="text-gray-400 text-sm mt-2">Crie um novo produto para começar</p>
+              </div>
+            ) : (
+              <AdminProductList
+                products={cardapio.products}
+                categories={cardapio.categories}
+                onEdit={(product) => {
+                  setEditingProduct(product);
+                  setShowForm(true);
+                }}
+                onDelete={handleDeleteProduct}
+              />
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
