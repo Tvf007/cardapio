@@ -14,14 +14,12 @@ export default function AdminPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<MenuItem | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showProductForm, setShowProductForm] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "categorias" | "produtos">("dashboard");
   const logoInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const cardapio = useCardapio();
@@ -67,7 +65,7 @@ export default function AdminPage() {
       await logout();
       setUser(null);
       setEditingProduct(null);
-      setShowForm(false);
+      setShowProductForm(false);
       toast.success("Logout realizado com sucesso");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao fazer logout");
@@ -90,7 +88,6 @@ export default function AdminPage() {
 
   const handleSaveProduct = async (product: MenuItem) => {
     try {
-      setSyncing(true);
       if (editingProduct) {
         await cardapio.updateProduct(product);
         toast.success("Produto atualizado com sucesso!");
@@ -99,11 +96,9 @@ export default function AdminPage() {
         toast.success("Produto adicionado com sucesso!");
       }
       setEditingProduct(null);
-      setShowForm(false);
+      setShowProductForm(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar produto");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -111,13 +106,10 @@ export default function AdminPage() {
     if (!confirm("Tem certeza que quer deletar este produto?")) return;
 
     try {
-      setSyncing(true);
       await cardapio.deleteProduct(id);
       toast.success("Produto deletado com sucesso!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao deletar produto");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -128,7 +120,6 @@ export default function AdminPage() {
     }
 
     try {
-      setSyncing(true);
       const newCategory: Category = {
         id: Date.now().toString(),
         name: newCategoryName.trim(),
@@ -136,12 +127,9 @@ export default function AdminPage() {
 
       await cardapio.addCategory(newCategory);
       setNewCategoryName("");
-      setShowNewCategoryForm(false);
       toast.success("Categoria criada com sucesso!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao criar categoria");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -152,7 +140,6 @@ export default function AdminPage() {
     }
 
     try {
-      setSyncing(true);
       const updatedCategory: Category = {
         id: categoryId,
         name: editingCategoryName.trim(),
@@ -164,8 +151,6 @@ export default function AdminPage() {
       toast.success("Categoria atualizada com sucesso!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar categoria");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -182,13 +167,10 @@ export default function AdminPage() {
     if (!confirm("Tem certeza que quer deletar esta categoria?")) return;
 
     try {
-      setSyncing(true);
       await cardapio.deleteCategory(categoryId);
       toast.success("Categoria deletada com sucesso!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao deletar categoria");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -210,54 +192,49 @@ export default function AdminPage() {
   const cardapioUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => logoInputRef.current?.click()}
-              className="relative w-12 h-12 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer"
-              style={{ backgroundColor: "#7c4e42" }}
-              title="Clique para alterar logo"
-            >
-              {logo ? (
-                <img
-                  src={logo}
-                  alt="Logo"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-              ) : (
-                <span className="text-xl">🍽️</span>
-              )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all duration-200">
-                <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">↻</span>
-              </span>
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleLogoChange}
-              className="hidden"
-              aria-label="Upload logo"
-            />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Painel de Controle</h1>
-              <p className="text-xs text-gray-600">
-                Logado como <span className="font-semibold">{user.email}</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {cardapio.error && (
-              <div className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg max-w-xs">
-                ⚠️ {cardapio.error}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                className="relative w-12 h-12 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer"
+                style={{ backgroundColor: "#7c4e42" }}
+                title="Clique para alterar logo"
+              >
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt="Logo"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <span className="text-xl">🍽️</span>
+                )}
+                <span className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all duration-200">
+                  <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">↻</span>
+                </span>
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+                aria-label="Upload logo"
+              />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Cardápio Caixa Freitas</h1>
+                <p className="text-xs text-gray-600">
+                  Painel de Administração - Logado como <span className="font-semibold">{user.email}</span>
+                </p>
               </div>
-            )}
+            </div>
             <RippleButton
               onClick={handleLogout}
-              disabled={syncing}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50"
+              className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg"
             >
               Sair
             </RippleButton>
@@ -265,218 +242,266 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-8 mb-12 shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Compartilhe o Cardápio</h2>
-          <p className="text-gray-700 mb-6">Copie o link abaixo e compartilhe com seus clientes:</p>
-          <div className="flex gap-3 mb-4">
-            <input
-              type="text"
-              value={cardapioUrl}
-              readOnly
-              className="flex-1 px-4 py-3 border border-blue-300 rounded-lg bg-white font-mono text-sm"
-            />
-            <RippleButton
-              onClick={() => {
-                navigator.clipboard.writeText(cardapioUrl);
-                toast.success("Link copiado com sucesso!");
-              }}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              📋 Copiar
-            </RippleButton>
-          </div>
-          <p className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
-            💡 Dica: Use um gerador de QR Code online com este link para criar um QR Code e compartilhe com seus
-            clientes!
-          </p>
+      {/* Tab Navigation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+              activeTab === "dashboard"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            📊 Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("categorias")}
+            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+              activeTab === "categorias"
+                ? "border-green-600 text-green-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            📂 Categorias
+          </button>
+          <button
+            onClick={() => setActiveTab("produtos")}
+            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+              activeTab === "produtos"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            🍽️ Produtos
+          </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Total de Produtos</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{cardapio.products.length}</p>
+      {/* Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Dashboard Tab */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-8">
+            {/* Share Section */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-8 shadow-sm">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">📋 Compartilhe o Cardápio</h2>
+              <p className="text-gray-700 mb-6">Copie o link abaixo e compartilhe com seus clientes:</p>
+              <div className="flex gap-3 mb-4">
+                <input
+                  type="text"
+                  value={cardapioUrl}
+                  readOnly
+                  className="flex-1 px-4 py-3 border border-blue-300 rounded-lg bg-white font-mono text-sm"
+                />
+                <RippleButton
+                  onClick={() => {
+                    navigator.clipboard.writeText(cardapioUrl);
+                    toast.success("Link copiado com sucesso!");
+                  }}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  📋 Copiar
+                </RippleButton>
               </div>
-              <div className="w-14 h-14 bg-yellow-100 rounded-xl flex items-center justify-center text-2xl">🍽️</div>
+              <p className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                💡 Dica: Use um gerador de QR Code online com este link para criar um QR Code e compartilhe com seus clientes!
+              </p>
             </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Categorias</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{cardapio.categories.length}</p>
-              </div>
-              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">📂</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium">Disponíveis</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {cardapio.products.filter((p) => p.available).length}
-                </p>
-              </div>
-              <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center text-2xl">✅</div>
-            </div>
-          </div>
-        </div>
 
-        {/* Seção de Gerenciamento de Categorias */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-12">
-          <div className="border-b border-gray-100 px-8 py-6 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">📂 Categorias</h3>
-            {!showNewCategoryForm && (
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium">Total de Produtos</p>
+                    <p className="text-4xl font-bold text-gray-900 mt-2">{cardapio.products.length}</p>
+                  </div>
+                  <div className="w-16 h-16 bg-yellow-100 rounded-xl flex items-center justify-center text-3xl">🍽️</div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium">Categorias</p>
+                    <p className="text-4xl font-bold text-gray-900 mt-2">{cardapio.categories.length}</p>
+                  </div>
+                  <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center text-3xl">📂</div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium">Disponíveis</p>
+                    <p className="text-4xl font-bold text-gray-900 mt-2">
+                      {cardapio.products.filter((p) => p.available).length}
+                    </p>
+                  </div>
+                  <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center text-3xl">✅</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Categorias Tab */}
+        {activeTab === "categorias" && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+            <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Gerenciar Categorias</h2>
               <RippleButton
-                onClick={() => setShowNewCategoryForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                onClick={() => setNewCategoryName("")}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-md"
               >
                 + Nova Categoria
               </RippleButton>
-            )}
-          </div>
+            </div>
 
-          {showNewCategoryForm && (
-            <div className="px-8 py-6 bg-green-50 border-b border-green-100">
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="Nome da categoria"
-                  className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            <div className="p-8">
+              {/* New Category Form */}
+              <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-xl">
+                <div className="flex gap-3 mb-4">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nome da categoria..."
+                    className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <RippleButton
+                    onClick={handleAddCategory}
+                    className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700"
+                  >
+                    Adicionar
+                  </RippleButton>
+                </div>
+              </div>
+
+              {/* Categories List */}
+              <div className="space-y-3">
+                {cardapio.categories.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">Nenhuma categoria criada ainda</p>
+                ) : (
+                  cardapio.categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
+                    >
+                      {editingCategoryId === category.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editingCategoryName}
+                            onChange={(e) => setEditingCategoryName(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="flex gap-2 ml-4">
+                            <RippleButton
+                              onClick={() => handleEditCategory(category.id)}
+                              className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700"
+                            >
+                              ✓ Salvar
+                            </RippleButton>
+                            <RippleButton
+                              onClick={() => setEditingCategoryId(null)}
+                              className="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-400"
+                            >
+                              ✕ Cancelar
+                            </RippleButton>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                            <p className="text-xs text-gray-500">ID: {category.id}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <RippleButton
+                              onClick={() => {
+                                setEditingCategoryId(category.id);
+                                setEditingCategoryName(category.name);
+                              }}
+                              className="bg-blue-100 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-200"
+                            >
+                              ✏️ Editar
+                            </RippleButton>
+                            <RippleButton
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="bg-red-100 text-red-600 px-4 py-2 rounded text-sm font-medium hover:bg-red-200"
+                            >
+                              🗑️ Deletar
+                            </RippleButton>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Produtos Tab */}
+        {activeTab === "produtos" && (
+          <div className="space-y-6">
+            {/* Add Product Form */}
+            {showProductForm && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                  {editingProduct ? "Editar Produto" : "Novo Produto"}
+                </h2>
+                <ProductForm
+                  onSubmit={handleSaveProduct}
+                  onCancel={() => {
+                    setShowProductForm(false);
+                    setEditingProduct(null);
+                  }}
+                  product={editingProduct || undefined}
+                  categories={cardapio.categories}
                 />
-                <RippleButton
-                  onClick={handleAddCategory}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700"
-                >
-                  Adicionar
-                </RippleButton>
+              </div>
+            )}
+
+            {/* Products Button */}
+            {!showProductForm && (
+              <div className="flex justify-center">
                 <RippleButton
                   onClick={() => {
-                    setShowNewCategoryForm(false);
-                    setNewCategoryName("");
+                    setEditingProduct(null);
+                    setShowProductForm(true);
                   }}
-                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-400"
+                  className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
                 >
-                  Cancelar
+                  + Novo Produto
                 </RippleButton>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="px-8 py-6 space-y-2">
-            {cardapio.categories.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Nenhuma categoria criada ainda</p>
-            ) : (
-              cardapio.categories.map((category) => (
-                <div key={category.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors">
-                  {editingCategoryId === category.id ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingCategoryName}
-                        onChange={(e) => setEditingCategoryName(e.target.value)}
-                        className="flex-1 px-3 py-1 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div className="flex gap-2 ml-4">
-                        <RippleButton
-                          onClick={() => handleEditCategory(category.id)}
-                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-blue-700"
-                        >
-                          ✓
-                        </RippleButton>
-                        <RippleButton
-                          onClick={() => {
-                            setEditingCategoryId(null);
-                            setEditingCategoryName("");
-                          }}
-                          className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm font-medium hover:bg-gray-400"
-                        >
-                          ✕
-                        </RippleButton>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium text-gray-900">{category.name}</span>
-                      <div className="flex gap-2">
-                        <RippleButton
-                          onClick={() => {
-                            setEditingCategoryId(category.id);
-                            setEditingCategoryName(category.name);
-                          }}
-                          className="bg-blue-100 text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-200"
-                        >
-                          Editar
-                        </RippleButton>
-                        <RippleButton
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="bg-red-100 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-200"
-                        >
-                          Deletar
-                        </RippleButton>
-                      </div>
-                    </>
-                  )}
+            {/* Products List */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              {cardapio.products.length === 0 ? (
+                <div className="px-8 py-12 text-center">
+                  <p className="text-gray-500 text-lg">Nenhum produto cadastrado ainda</p>
+                  <p className="text-gray-400 text-sm mt-2">Clique em "+ Novo Produto" para começar</p>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Seção de Produtos */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <div className="border-b border-gray-100 px-8 py-6 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">🍽️ Produtos</h3>
-            {!showForm && (
-              <RippleButton
-                onClick={() => {
-                  setEditingProduct(null);
-                  setShowForm(true);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                + Novo Produto
-              </RippleButton>
-            )}
-          </div>
-
-          {showForm && (
-            <div className="px-8 py-6 bg-blue-50 border-b border-blue-100">
-              <ProductForm
-                onSubmit={handleSaveProduct}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingProduct(null);
-                }}
-                product={editingProduct || undefined}
-                categories={cardapio.categories}
-              />
+              ) : (
+                <AdminProductList
+                  products={cardapio.products}
+                  categories={cardapio.categories}
+                  onEdit={(product) => {
+                    setEditingProduct(product);
+                    setShowProductForm(true);
+                  }}
+                  onDelete={handleDeleteProduct}
+                />
+              )}
             </div>
-          )}
-
-          <div>
-            {cardapio.products.length === 0 ? (
-              <div className="px-8 py-12 text-center">
-                <p className="text-gray-500 text-lg">Nenhum produto cadastrado ainda</p>
-                <p className="text-gray-400 text-sm mt-2">Crie um novo produto para começar</p>
-              </div>
-            ) : (
-              <AdminProductList
-                products={cardapio.products}
-                categories={cardapio.categories}
-                onEdit={(product) => {
-                  setEditingProduct(product);
-                  setShowForm(true);
-                }}
-                onDelete={handleDeleteProduct}
-              />
-            )}
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
