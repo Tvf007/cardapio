@@ -91,9 +91,12 @@ export async function POST(request: NextRequest) {
       console.log(`[SYNC POST] Produto "${p.name}" tem imagem: ${p.image?.substring(0, 60)}...`);
     });
 
+    // Filtrar categorias inválidas (com ID nulo)
+    const validCategories = categories.filter((cat: any) => cat && cat.id && cat.id !== null && cat.id !== undefined);
+
     // Validar dados antes de salvar
     try {
-      if (!Array.isArray(categories) || !Array.isArray(products)) {
+      if (!Array.isArray(validCategories) || !Array.isArray(products)) {
         return NextResponse.json(
           { error: "Categories e products devem ser arrays" },
           { status: 400 }
@@ -101,8 +104,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Validar categorias
-      if (categories.length > 0) {
-        validateArray(CategorySchema, categories, "categories");
+      if (validCategories.length > 0) {
+        validateArray(CategorySchema, validCategories, "categories");
       }
 
       // Validar produtos
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
     const existingCategoryIds = new Set((existingCategories || []).map((c: any) => c.id));
     const existingProductIds = new Set((existingProducts || []).map((p: any) => p.id));
 
-    const newCategoryIds = new Set(categories.map((c: any) => c.id));
+    const newCategoryIds = new Set(validCategories.map((c: any) => c.id));
     const newProductIds = new Set(products.map((p: any) => p.id));
 
     // Identificar itens a deletar (estao no banco mas nao na lista nova)
@@ -168,10 +171,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert categorias (atualiza se existe, insere se novo)
-    if (categories && categories.length > 0) {
+    if (validCategories && validCategories.length > 0) {
       const { error: catError } = await supabase
         .from("categories")
-        .upsert(categories, { onConflict: "id" });
+        .upsert(validCategories, { onConflict: "id" });
 
       if (catError) {
         return NextResponse.json(

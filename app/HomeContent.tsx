@@ -36,7 +36,10 @@ export function HomeContent() {
         borderColor: '#4a2e24'
       }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
+            <div>
+              <p className="text-lg font-bold tracking-widest" style={{ color: '#f5e6d3', letterSpacing: '2px' }}>PADARIA FREITAS</p>
+            </div>
             <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#d4a574' }}>
               {logo ? (
                 <img
@@ -48,12 +51,9 @@ export function HomeContent() {
                 <span className="text-6xl">🍽️</span>
               )}
             </div>
-            <div>
-              <h1 className="text-5xl font-bold text-white tracking-tight">
-                Cardápio
-              </h1>
-              <p className="text-sm font-medium mt-2" style={{ color: '#f5e6d3' }}>PADARIA Freitas</p>
-            </div>
+            <h1 className="text-5xl font-black text-white tracking-widest" style={{ letterSpacing: '3px' }}>
+              CARDÁPIO
+            </h1>
           </div>
         </div>
       </header>
