@@ -249,12 +249,6 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {cardapio.loading && (
-              <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-                <div className="animate-spin h-4 w-4 border-2 border-amber-600 border-t-transparent rounded-full"></div>
-                Sincronizando...
-              </div>
-            )}
             {cardapio.error && (
               <div className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg max-w-xs">
                 ⚠️ {cardapio.error}
@@ -453,12 +447,12 @@ export default function AdminPage() {
           {showForm && (
             <div className="px-8 py-6 bg-blue-50 border-b border-blue-100">
               <ProductForm
-                onSave={handleSaveProduct}
+                onSubmit={handleSaveProduct}
                 onCancel={() => {
                   setShowForm(false);
                   setEditingProduct(null);
                 }}
-                initialProduct={editingProduct || undefined}
+                product={editingProduct || undefined}
                 categories={cardapio.categories}
               />
             </div>
