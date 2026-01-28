@@ -112,8 +112,8 @@ export function MenuItem({ item, categories }: MenuItemProps) {
         </div>
 
         {/* Price Badge - Bottom Right */}
-        <div className="absolute bottom-3 right-3 bg-gradient-to-r from-green-500 to-green-600 shadow-md px-3 py-1.5 rounded-md">
-          <span className="font-bold text-white text-sm">
+        <div className="absolute bottom-3 right-3 bg-gradient-to-r from-green-500 to-green-600 shadow-md px-4 py-2 rounded-md">
+          <span className="font-extrabold text-white text-base">
             R$ {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
           </span>
         </div>
