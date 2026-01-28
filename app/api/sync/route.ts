@@ -22,17 +22,31 @@ export async function GET() {
       );
     }
 
-    // Normalizar preços e disponibilidade
+    // Normalizar preços, disponibilidade e imagens
     const normalizePrice = (price: any): number => {
       if (typeof price === 'number') return price;
       if (typeof price === 'string') return parseFloat(price) || 0;
       return 0;
     };
 
+    const normalizeImage = (image: any): string => {
+      if (typeof image === 'string') {
+        // Se for URL, data URI ou string vazia, manter
+        if (image.startsWith('http') || image.startsWith('data:') || image === '') {
+          return image;
+        }
+        // Se for qualquer outra coisa, converter para string vazia
+        return '';
+      }
+      // Se for null, undefined ou outro tipo, retornar string vazia
+      return '';
+    };
+
     const normalizedProducts = (products || []).map((p: any) => ({
       ...p,
       price: normalizePrice(p.price),
       available: p.available === true || p.available === 1,
+      image: normalizeImage(p.image),
     }));
 
     return NextResponse.json({

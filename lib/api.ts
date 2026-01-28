@@ -67,11 +67,16 @@ export async function syncFromSupabase(
 
     const data = await response.json();
 
-    // Validar resposta
-    const validated = validateAndParse(SyncResponseSchema, data, "Resposta do Supabase");
+    // Validar que temos as chaves necessárias
+    if (!data.categories || !data.products) {
+      throw new Error("Resposta inválida: faltam categories ou products");
+    }
 
     onProgress?.("success", "Dados carregados com sucesso");
-    return validated;
+    return {
+      categories: data.categories || [],
+      products: data.products || [],
+    };
   }, 3);
 }
 
