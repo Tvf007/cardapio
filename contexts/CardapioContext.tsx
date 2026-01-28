@@ -26,6 +26,11 @@ interface CardapioContextType {
 
 const CardapioContext = createContext<CardapioContextType | undefined>(undefined);
 
+// Helper function para filtrar categorias inválidas
+const getValidCategories = (categories: Category[]): Category[] => {
+  return categories.filter((c) => c && c.id && c.id !== null && c.id !== undefined);
+};
+
 export function CardapioProvider({ children }: { children: ReactNode }) {
   const syncedData = useSyncedData();
 
@@ -34,7 +39,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         console.log("[CardapioContext] Atualizando produto:", product.id);
         const updatedProducts = syncedData.products.map((p) => (p.id === product.id ? product : p));
-        await syncToSupabase(updatedProducts, syncedData.categories);
+        await syncToSupabase(updatedProducts, getValidCategories(syncedData.categories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Produto atualizado com sucesso");
@@ -51,7 +56,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         console.log("[CardapioContext] Deletando produto:", id);
         const updatedProducts = syncedData.products.filter((p) => p.id !== id);
-        await syncToSupabase(updatedProducts, syncedData.categories);
+        await syncToSupabase(updatedProducts, getValidCategories(syncedData.categories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Produto deletado com sucesso");
@@ -68,7 +73,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         console.log("[CardapioContext] Adicionando produto:", product.name);
         const updatedProducts = [...syncedData.products, product];
-        await syncToSupabase(updatedProducts, syncedData.categories);
+        await syncToSupabase(updatedProducts, getValidCategories(syncedData.categories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Produto adicionado com sucesso");
@@ -87,7 +92,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         const updatedCategories = syncedData.categories.map((c) =>
           c.id === category.id ? category : c
         );
-        await syncToSupabase(syncedData.products, updatedCategories);
+        await syncToSupabase(syncedData.products, getValidCategories(updatedCategories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Categoria atualizada com sucesso");
@@ -105,7 +110,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         console.log("[CardapioContext] Deletando categoria:", id);
         const updatedCategories = syncedData.categories.filter((c) => c.id !== id);
         const updatedProducts = syncedData.products.filter((p) => p.category !== id);
-        await syncToSupabase(updatedProducts, updatedCategories);
+        await syncToSupabase(updatedProducts, getValidCategories(updatedCategories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Categoria deletada com sucesso");
@@ -122,7 +127,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         console.log("[CardapioContext] Adicionando categoria:", category.name);
         const updatedCategories = [...syncedData.categories, category];
-        await syncToSupabase(syncedData.products, updatedCategories);
+        await syncToSupabase(syncedData.products, getValidCategories(updatedCategories));
         // Refresh para sincronizar em tempo real
         await syncedData.refresh();
         console.log("[CardapioContext] Categoria adicionada com sucesso");
@@ -137,7 +142,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
   const syncToCloud = useCallback(async () => {
     try {
       console.log("[CardapioContext] Sincronizando com nuvem...");
-      await syncToSupabase(syncedData.products, syncedData.categories);
+      await syncToSupabase(syncedData.products, getValidCategories(syncedData.categories));
       await syncedData.refresh();
       console.log("[CardapioContext] Sincronizacao concluida");
     } catch (error) {
