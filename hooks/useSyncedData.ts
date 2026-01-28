@@ -185,12 +185,12 @@ export function useSyncedData(): SyncedDataState & {
       setState((prev) => ({ ...prev, realtimeConnected: false }));
     }
 
-    // Polling contínuo (a cada 3 segundos) - garante atualização entre aparelhos mesmo sem Realtime
-    console.log("📡 [Polling] Iniciando polling contínuo a cada 3 segundos");
+    // Polling contínuo (a cada 30 segundos) - garante atualização entre aparelhos mesmo sem Realtime
+    console.log("📡 [Polling] Iniciando polling contínuo a cada 30 segundos");
     pollIntervalRef.current = setInterval(() => {
       console.log("📡 [Polling] Sincronizando dados...");
       refresh();
-    }, 3000);
+    }, 30000);
 
     // Cleanup
     return () => {

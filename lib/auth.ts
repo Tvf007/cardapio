@@ -6,8 +6,8 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-// Credenciais de teste para desenvolvimento
-const DEMO_PASSWORD = "caixa 123";
+// Credenciais de teste para desenvolvimento (carregado da variável de ambiente)
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "caixa 123";
 
 // Fazer login com apenas senha
 export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
