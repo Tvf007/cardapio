@@ -77,13 +77,21 @@ export function useSyncedData(): SyncedDataState & {
     }
   }, []);
 
-  // Função principal para sincronizar
+  // Funcao principal para sincronizar
   const refresh = useCallback(async () => {
+    console.log("[useSyncedData] Iniciando refresh...");
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       // Tentar carregar do Supabase
       const data = await syncFromSupabase();
+
+      // Debug: verificar imagens recebidas
+      const productsWithImages = data.products.filter((p) => p.image && p.image.length > 0);
+      console.log(`[useSyncedData] Recebidos ${data.products.length} produtos, ${productsWithImages.length} com imagem`);
+      productsWithImages.forEach((p) => {
+        console.log(`[useSyncedData] Produto "${p.name}" imagem: ${p.image?.substring(0, 60)}...`);
+      });
 
       setState((prev) => ({
         ...prev,
@@ -100,6 +108,7 @@ export function useSyncedData(): SyncedDataState & {
       // Notificar outras abas
       broadcastUpdate(data.categories, data.products);
     } catch (error) {
+      console.error("[useSyncedData] Erro ao sincronizar:", error);
       // Fallback para localStorage
       const fallback = loadFromLocalStorage();
 
@@ -108,7 +117,7 @@ export function useSyncedData(): SyncedDataState & {
         categories: fallback.categories,
         products: fallback.products,
         loading: false,
-        error: `Sincronização offline: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+        error: `Sincronizacao offline: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         lastSync: new Date(),
       }));
 

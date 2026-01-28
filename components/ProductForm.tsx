@@ -17,7 +17,7 @@ export function ProductForm({
   categories,
   onSubmit,
   onCancel,
-  isLoading = false,
+  isLoading: externalLoading = false,
 }: ProductFormProps) {
   const [formData, setFormData] = useState<MenuItem>(
     product || {
@@ -32,6 +32,10 @@ export function ProductForm({
   );
 
   const [imagePreview, setImagePreview] = useState<string>(formData.image || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isLoading = externalLoading || isSubmitting;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,9 +63,35 @@ export function ProductForm({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    setError(null);
+
+    // Validacao basica no frontend
+    if (!formData.name.trim()) {
+      setError("Nome do produto e obrigatorio");
+      return;
+    }
+
+    if (formData.price < 0) {
+      setError("Preco deve ser maior ou igual a zero");
+      return;
+    }
+
+    if (!formData.category) {
+      setError("Selecione uma categoria");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(formData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar produto");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -69,6 +99,13 @@ export function ProductForm({
       <h2 className="text-xl font-semibold text-gray-900 mb-6">
         {product ? "Editar Produto" : "Novo Produto"}
       </h2>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-700 text-sm font-medium">{error}</p>
+        </div>
+      )}
 
       {/* Image Preview and Upload */}
       <div className="mb-6">
@@ -260,28 +297,41 @@ export function ProductForm({
       <div className="flex gap-2">
         <RippleButton
           type="submit"
-          className="flex-1 text-white py-2.5 rounded-md font-medium transition-all duration-200 text-sm"
+          disabled={isLoading}
+          className={`flex-1 text-white py-2.5 rounded-md font-medium transition-all duration-200 text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
           style={{
-            backgroundColor: '#7c4e42',
+            backgroundColor: isLoading ? '#9a7a70' : '#7c4e42',
             boxShadow: '0 4px 12px rgba(124, 78, 66, 0.2)'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#5a3a2f';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 20px rgba(124, 78, 66, 0.3)';
+            if (!isLoading) {
+              e.currentTarget.style.backgroundColor = '#5a3a2f';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(124, 78, 66, 0.3)';
+            }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#7c4e42';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 78, 66, 0.2)';
+            if (!isLoading) {
+              e.currentTarget.style.backgroundColor = '#7c4e42';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 78, 66, 0.2)';
+            }
           }}
         >
-          {product ? "Atualizar" : "Criar"} Produto
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+              Salvando...
+            </span>
+          ) : (
+            <>{product ? "Atualizar" : "Criar"} Produto</>
+          )}
         </RippleButton>
         <RippleButton
           type="button"
           onClick={onCancel}
-          className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-md font-medium transition-colors duration-200 text-sm"
+          disabled={isLoading}
+          className={`flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-md font-medium transition-colors duration-200 text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           Cancelar
         </RippleButton>

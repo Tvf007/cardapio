@@ -11,13 +11,11 @@ export const MenuItemSchema = z.object({
   id: z.string().min(1, "ID do produto é obrigatório"),
   name: z.string().min(1, "Nome do produto é obrigatório"),
   description: z.string().min(0),
-  price: z.coerce.number().positive("Preço deve ser maior que 0"),
+  price: z.coerce.number().nonnegative("Preço deve ser maior ou igual a 0"),
   category: z.string().min(1, "Categoria é obrigatória"),
-  image: z.union([
-    z.string().url(),
-    z.string().startsWith("data:"),
-    z.string().max(0) // permite string vazia
-  ]).optional().default(""),
+  // Aceita qualquer string para imagem (URL, data URI base64, ou vazia)
+  // A validacao com z.union era muito restritiva e falhava com data URIs grandes
+  image: z.string().optional().default(""),
   available: z.boolean().default(true),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),

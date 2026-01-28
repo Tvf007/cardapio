@@ -1,137 +1,574 @@
-import { MenuItem, Category, validateAndParse, SyncResponseSchema } from "./validation";
+/**
+ * API Client com suporte a:
+ * - AbortController para cancelamento
+ * - Request Queue integration
+ * - Timestamp-based conflict resolution
+ * - Logging detalhado
+ */
 
-// Tipo para o callback de progresso
-export type FetchProgressCallback = (status: "loading" | "success" | "error", message?: string) => void;
+import { MenuItem, Category } from "./validation";
+import {
+  logger,
+  getRequestQueue,
+  getCrudMutex,
+  ConflictResolver,
+  isAbortError,
+  withTimeout,
+} from "./requestQueue";
 
-// Função helper para retry com backoff exponencial
+// ============================================================================
+// TIPOS
+// ============================================================================
+
+export type FetchProgressCallback = (
+  status: "loading" | "success" | "error",
+  message?: string
+) => void;
+
+export interface SyncResult {
+  categories: Category[];
+  products: MenuItem[];
+  timestamp: number;
+  fromCache?: boolean;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  timestamp: number;
+  requestId?: string;
+}
+
+// ============================================================================
+// CONFIGURACAO
+// ============================================================================
+
+const API_CONFIG = {
+  baseTimeout: 5000,
+  maxRetries: 3,
+  initialRetryDelay: 1000,
+  syncEndpoint: "/api/sync",
+  initEndpoint: "/api/init-supabase",
+  testEndpoint: "/api/test",
+};
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Funcao helper para retry com backoff exponencial
+ */
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries = 3,
-  initialDelay = 1000
+  options?: {
+    maxRetries?: number;
+    initialDelay?: number;
+    signal?: AbortSignal;
+    onRetry?: (attempt: number, error: Error) => void;
+  }
 ): Promise<T> {
+  const maxRetries = options?.maxRetries ?? API_CONFIG.maxRetries;
+  const initialDelay = options?.initialDelay ?? API_CONFIG.initialRetryDelay;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      // Verificar abort antes de cada tentativa
+      if (options?.signal?.aborted) {
+        throw new DOMException("Request aborted", "AbortError");
+      }
+
       return await fn();
     } catch (error) {
       lastError = error as Error;
 
+      // Nao fazer retry se foi abortado
+      if (isAbortError(error)) {
+        throw error;
+      }
+
       if (attempt < maxRetries) {
-        const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff: 1s, 2s, 4s, 8s
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        const delay = initialDelay * Math.pow(2, attempt);
+
+        logger.warn("API", `Tentativa ${attempt + 1} falhou, retry em ${delay}ms`, {
+          error: lastError.message,
+        });
+
+        options?.onRetry?.(attempt, lastError);
+
+        await new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(resolve, delay);
+
+          // Permitir abort durante o delay
+          if (options?.signal) {
+            options.signal.addEventListener("abort", () => {
+              clearTimeout(timeoutId);
+              reject(new DOMException("Request aborted", "AbortError"));
+            });
+          }
+        });
       }
     }
   }
 
-  throw lastError || new Error("Falha após retries");
+  throw lastError || new Error("Falha apos retries");
 }
 
-// Função helper para fetch com timeout
-async function fetchWithTimeout(
+/**
+ * Funcao helper para fetch com timeout e abort
+ */
+async function fetchWithAbort(
   url: string,
-  options: RequestInit & { timeout?: number } = {},
-  timeoutMs = 5000
+  options: RequestInit & {
+    timeout?: number;
+    externalSignal?: AbortSignal;
+  } = {}
 ): Promise<Response> {
-  const { timeout, ...fetchOptions } = options;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout || timeoutMs);
+  const { timeout = API_CONFIG.baseTimeout, externalSignal, ...fetchOptions } = options;
+
+  // Criar AbortController interno para timeout
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    timeoutController.abort();
+    logger.warn("API", `Timeout de ${timeout}ms atingido`, { url });
+  }, timeout);
+
+  // Combinar signals (externo + timeout)
+  const combinedSignal = externalSignal
+    ? AbortSignal.any([externalSignal, timeoutController.signal])
+    : timeoutController.signal;
 
   try {
+    logger.debug("API", "Iniciando fetch", { url, method: fetchOptions.method || "GET" });
+
     const response = await fetch(url, {
       ...fetchOptions,
-      signal: controller.signal,
+      signal: combinedSignal,
     });
+
+    logger.debug("API", "Fetch completo", { url, status: response.status });
     return response;
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-// Função principal para sincronizar dados
-export async function syncFromSupabase(
-  onProgress?: FetchProgressCallback
-): Promise<{ categories: Category[]; products: MenuItem[] }> {
-  return retryWithBackoff(async () => {
-    onProgress?.("loading", "Carregando dados do Supabase...");
+// ============================================================================
+// CACHE LOCAL
+// ============================================================================
 
-    const response = await fetchWithTimeout("/api/sync", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
+}
+
+class LocalCache {
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
+  private readonly defaultTTL = 30000; // 30 segundos
+
+  set<T>(key: string, data: T, ttl?: number): void {
+    const now = Date.now();
+    this.cache.set(key, {
+      data,
+      timestamp: now,
+      expiresAt: now + (ttl ?? this.defaultTTL),
     });
+    logger.debug("LocalCache", "Dados cacheados", { key, ttl: ttl ?? this.defaultTTL });
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Erro desconhecido");
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+  get<T>(key: string): { data: T; timestamp: number } | null {
+    const entry = this.cache.get(key) as CacheEntry<T> | undefined;
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      logger.debug("LocalCache", "Cache expirado", { key });
+      return null;
     }
+
+    logger.debug("LocalCache", "Cache hit", { key, age: Date.now() - entry.timestamp });
+    return { data: entry.data, timestamp: entry.timestamp };
+  }
+
+  invalidate(key: string): void {
+    this.cache.delete(key);
+    logger.debug("LocalCache", "Cache invalidado", { key });
+  }
+
+  invalidateAll(): void {
+    this.cache.clear();
+    logger.debug("LocalCache", "Todo cache invalidado");
+  }
+}
+
+const localCache = new LocalCache();
+
+// ============================================================================
+// API FUNCTIONS
+// ============================================================================
+
+/**
+ * Sincroniza dados DO Supabase (GET)
+ * Com suporte a:
+ * - AbortController
+ * - Request Queue
+ * - Cache local
+ * - Deduplication
+ */
+export async function syncFromSupabase(
+  onProgress?: FetchProgressCallback,
+  options?: {
+    signal?: AbortSignal;
+    skipQueue?: boolean;
+    forceRefresh?: boolean;
+  }
+): Promise<SyncResult> {
+  const requestQueue = getRequestQueue();
+
+  // Verificar cache primeiro (se nao forcar refresh)
+  if (!options?.forceRefresh) {
+    const cached = localCache.get<SyncResult>("sync_data");
+    if (cached) {
+      logger.info("API", "Retornando dados do cache", { age: Date.now() - cached.timestamp });
+      return { ...cached.data, fromCache: true };
+    }
+  }
+
+  // Se skipQueue, executar direto
+  if (options?.skipQueue) {
+    return executeSyncFrom(options?.signal, onProgress);
+  }
+
+  // Cancelar requests de sync antigas na fila
+  requestQueue.cancelOldSyncRequests();
+
+  // Enfileirar requisicao
+  const result = await requestQueue.enqueue(
+    "sync_from",
+    async (signal) => executeSyncFrom(signal, onProgress),
+    {
+      priority: "normal",
+      maxRetries: 3,
+    }
+  );
+
+  if (!result.success) {
+    throw result.error || new Error("Sync failed");
+  }
+
+  return result.data as SyncResult;
+}
+
+/**
+ * Executor real do sync FROM Supabase
+ */
+async function executeSyncFrom(
+  signal?: AbortSignal,
+  onProgress?: FetchProgressCallback
+): Promise<SyncResult> {
+  onProgress?.("loading", "Carregando dados do Supabase...");
+
+  logger.info("API", "Iniciando syncFromSupabase");
+  const startTime = Date.now();
+
+  try {
+    const response = await retryWithBackoff(
+      async () => {
+        const res = await fetchWithAbort(API_CONFIG.syncEndpoint, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          externalSignal: signal,
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "Erro desconhecido");
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
+
+        return res;
+      },
+      { signal }
+    );
 
     const data = await response.json();
 
-    // Validar que temos as chaves necessárias
     if (!data.categories || !data.products) {
-      throw new Error("Resposta inválida: faltam categories ou products");
+      throw new Error("Resposta invalida: faltam categories ou products");
     }
 
-    onProgress?.("success", "Dados carregados com sucesso");
-    return {
+    const syncResult: SyncResult = {
       categories: data.categories || [],
       products: data.products || [],
+      timestamp: Date.now(),
     };
-  }, 3);
+
+    // Cachear resultado
+    localCache.set("sync_data", syncResult);
+
+    const duration = Date.now() - startTime;
+    logger.info("API", "syncFromSupabase concluido", {
+      categoriesCount: syncResult.categories.length,
+      productsCount: syncResult.products.length,
+      duration,
+    });
+
+    onProgress?.("success", "Dados carregados com sucesso");
+    return syncResult;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    if (isAbortError(error)) {
+      logger.warn("API", "syncFromSupabase abortado", { duration });
+      throw error;
+    }
+
+    logger.error("API", "syncFromSupabase falhou", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      duration,
+    });
+
+    onProgress?.("error", error instanceof Error ? error.message : "Erro desconhecido");
+    throw error;
+  }
 }
 
-// Função para sincronizar para o Supabase
+/**
+ * Sincroniza dados PARA o Supabase (POST)
+ * Com suporte a:
+ * - AbortController
+ * - Request Queue
+ * - Mutex para garantir sequenciamento
+ * - Conflict resolution
+ */
 export async function syncToSupabase(
   products: MenuItem[],
   categories: Category[],
+  onProgress?: FetchProgressCallback,
+  options?: {
+    signal?: AbortSignal;
+    skipQueue?: boolean;
+    optimisticUpdate?: boolean;
+  }
+): Promise<void> {
+  const requestQueue = getRequestQueue();
+  const crudMutex = getCrudMutex();
+
+  logger.info("API", "Iniciando syncToSupabase", {
+    productsCount: products.length,
+    categoriesCount: categories.length,
+  });
+
+  // Usar mutex para garantir sequenciamento
+  await crudMutex.withLock(async () => {
+    // Se skipQueue, executar direto
+    if (options?.skipQueue) {
+      await executeSyncTo(products, categories, options?.signal, onProgress);
+      return;
+    }
+
+    // Enfileirar requisicao com prioridade alta (operacao de escrita)
+    const result = await requestQueue.enqueue(
+      "sync_to",
+      async (signal) => executeSyncTo(products, categories, signal, onProgress),
+      {
+        payload: { products, categories },
+        priority: "high",
+        maxRetries: 3,
+        skipDeduplication: true, // Writes sempre devem executar
+      }
+    );
+
+    if (!result.success) {
+      throw result.error || new Error("Sync to failed");
+    }
+  });
+
+  // Invalidar cache apos escrita bem-sucedida
+  localCache.invalidate("sync_data");
+}
+
+/**
+ * Executor real do sync TO Supabase
+ */
+async function executeSyncTo(
+  products: MenuItem[],
+  categories: Category[],
+  signal?: AbortSignal,
   onProgress?: FetchProgressCallback
 ): Promise<void> {
-  return retryWithBackoff(async () => {
-    onProgress?.("loading", "Sincronizando com Supabase...");
+  onProgress?.("loading", "Sincronizando com Supabase...");
 
-    const response = await fetchWithTimeout("/api/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ products, categories }),
-    });
+  const startTime = Date.now();
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Erro desconhecido");
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
+  try {
+    // Adicionar timestamp de atualizacao aos produtos
+    const productsWithTimestamp = products.map((p) => ({
+      ...p,
+      updated_at: new Date().toISOString(),
+    }));
+
+    await retryWithBackoff(
+      async () => {
+        const response = await fetchWithAbort(API_CONFIG.syncEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            products: productsWithTimestamp,
+            categories,
+          }),
+          externalSignal: signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "Erro desconhecido");
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+      },
+      { signal }
+    );
+
+    const duration = Date.now() - startTime;
+    logger.info("API", "syncToSupabase concluido", { duration });
 
     onProgress?.("success", "Dados sincronizados com sucesso");
-  }, 3);
-}
+  } catch (error) {
+    const duration = Date.now() - startTime;
 
-// Função para inicializar o banco de dados
-export async function initSupabaseDatabase(
-  onProgress?: FetchProgressCallback
-): Promise<void> {
-  return retryWithBackoff(async () => {
-    onProgress?.("loading", "Inicializando banco de dados...");
-
-    const response = await fetchWithTimeout("/api/init-supabase", {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Erro desconhecido");
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    if (isAbortError(error)) {
+      logger.warn("API", "syncToSupabase abortado", { duration });
+      throw error;
     }
 
-    onProgress?.("success", "Banco de dados inicializado");
-  }, 3);
+    logger.error("API", "syncToSupabase falhou", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      duration,
+    });
+
+    onProgress?.("error", error instanceof Error ? error.message : "Erro desconhecido");
+    throw error;
+  }
 }
 
-// Função para testar conexão
-export async function testSupabaseConnection(): Promise<boolean> {
+/**
+ * Inicializa o banco de dados
+ */
+export async function initSupabaseDatabase(
+  onProgress?: FetchProgressCallback,
+  options?: { signal?: AbortSignal }
+): Promise<void> {
+  logger.info("API", "Iniciando initSupabaseDatabase");
+
+  await retryWithBackoff(
+    async () => {
+      onProgress?.("loading", "Inicializando banco de dados...");
+
+      const response = await fetchWithAbort(API_CONFIG.initEndpoint, {
+        method: "GET",
+        externalSignal: options?.signal,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Erro desconhecido");
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      onProgress?.("success", "Banco de dados inicializado");
+    },
+    { signal: options?.signal }
+  );
+
+  logger.info("API", "initSupabaseDatabase concluido");
+}
+
+/**
+ * Testa conexao com o Supabase
+ */
+export async function testSupabaseConnection(options?: {
+  signal?: AbortSignal;
+}): Promise<boolean> {
   try {
-    const response = await fetchWithTimeout("/api/test", {
+    logger.debug("API", "Testando conexao");
+
+    const response = await fetchWithAbort(API_CONFIG.testEndpoint, {
       method: "GET",
+      timeout: 3000,
+      externalSignal: options?.signal,
     });
-    return response.ok;
-  } catch {
+
+    const isOk = response.ok;
+    logger.debug("API", "Teste de conexao concluido", { success: isOk });
+    return isOk;
+  } catch (error) {
+    if (isAbortError(error)) {
+      logger.debug("API", "Teste de conexao abortado");
+    } else {
+      logger.warn("API", "Teste de conexao falhou", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
     return false;
   }
 }
+
+// ============================================================================
+// CRUD OPERATIONS COM SEQUENCIAMENTO
+// ============================================================================
+
+/**
+ * Wrapper para operacoes CRUD que garante sequenciamento
+ */
+export async function executeSequentialCrud<T>(
+  operation: () => Promise<T>,
+  operationName: string
+): Promise<T> {
+  const crudMutex = getCrudMutex();
+
+  logger.info("API", `Iniciando operacao CRUD: ${operationName}`);
+
+  return crudMutex.withLock(async () => {
+    const startTime = Date.now();
+
+    try {
+      const result = await operation();
+      const duration = Date.now() - startTime;
+
+      logger.info("API", `Operacao CRUD concluida: ${operationName}`, { duration });
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      logger.error("API", `Operacao CRUD falhou: ${operationName}`, {
+        error: error instanceof Error ? error.message : "Unknown error",
+        duration,
+      });
+
+      throw error;
+    }
+  });
+}
+
+/**
+ * Resolve conflitos entre dados locais e do servidor
+ */
+export function resolveDataConflict<T extends { updated_at?: string; created_at?: string }>(
+  local: T,
+  server: T
+): T {
+  const resolution = ConflictResolver.resolveByTimestamp(local, server);
+
+  logger.info("API", "Conflito resolvido", {
+    winner: resolution.winner,
+    reason: resolution.reason,
+  });
+
+  return resolution.data;
+}
+
+// ============================================================================
+// EXPORTS ADICIONAIS
+// ============================================================================
+
+export { localCache, API_CONFIG };
