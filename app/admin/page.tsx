@@ -349,32 +349,33 @@ export default function AdminPage() {
         {/* Categorias Tab */}
         {activeTab === "categorias" && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+            <div className="border-b border-gray-200 px-8 py-6">
               <h2 className="text-2xl font-bold text-gray-900">Gerenciar Categorias</h2>
-              <RippleButton
-                onClick={() => setNewCategoryName("")}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-md"
-              >
-                + Nova Categoria
-              </RippleButton>
             </div>
 
             <div className="p-8">
               {/* New Category Form */}
-              <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-xl">
-                <div className="flex gap-3 mb-4">
+              <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Adicionar Nova Categoria</h3>
+                <div className="flex gap-3">
                   <input
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Nome da categoria..."
-                    className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-gray-900 font-semibold"
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddCategory();
+                      }
+                    }}
+                    placeholder="Digite o nome da categoria..."
+                    autoComplete="off"
+                    className="flex-1 px-4 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 font-medium transition-all"
                   />
                   <RippleButton
                     onClick={handleAddCategory}
-                    className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700"
+                    className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
                   >
-                    Adicionar
+                    + Adicionar
                   </RippleButton>
                 </div>
               </div>
