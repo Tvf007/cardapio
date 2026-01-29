@@ -8,7 +8,7 @@ import { AdminProductList } from "@/components/AdminProductList";
 import { RippleButton } from "@/components/RippleButton";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
-import { loginWithEmail, logout, getCurrentUser, AuthUser } from "@/lib/auth";
+import { loginWithPassword, logout, getCurrentUser, AuthUser } from "@/lib/auth";
 import { MenuItem, Category } from "@/lib/validation";
 
 export default function AdminPage() {
@@ -43,7 +43,7 @@ export default function AdminPage() {
   const handleLogin = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const result = await loginWithEmail(email, password);
+      const result = await loginWithPassword(password);
 
       if (result.error) {
         toast.error(result.error);
