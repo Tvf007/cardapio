@@ -7,11 +7,22 @@ export interface AuthUser {
 }
 
 // Credenciais de teste para desenvolvimento (carregado da variável de ambiente)
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "caixa 123";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+
+if (!DEMO_PASSWORD) {
+  console.warn("⚠️ NEXT_PUBLIC_ADMIN_PASSWORD não configurada. Auth desabilitada.");
+}
 
 // Fazer login com apenas senha
 export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
+    if (!DEMO_PASSWORD) {
+      return {
+        user: null,
+        error: "Autenticação não configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD",
+      };
+    }
+
     // Permitir login de teste apenas com senha
     if (password === DEMO_PASSWORD) {
       const user: AuthUser = {
@@ -57,13 +68,36 @@ export async function logout(): Promise<{ error: string | null }> {
   }
 }
 
+// Validar se o objeto é um AuthUser válido
+function isValidAuthUser(obj: unknown): obj is AuthUser {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "id" in obj &&
+    "email" in obj &&
+    "isAdmin" in obj &&
+    typeof (obj as Record<string, unknown>).id === "string" &&
+    typeof (obj as Record<string, unknown>).email === "string" &&
+    typeof (obj as Record<string, unknown>).isAdmin === "boolean"
+  );
+}
+
 // Obter usuário atualmente logado
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     // Verificar se existe usuário no localStorage (session simples)
     const savedUser = localStorage.getItem("admin-user");
     if (savedUser) {
-      return JSON.parse(savedUser);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (isValidAuthUser(parsedUser)) {
+          return parsedUser;
+        }
+        // Se inválido, remover do localStorage
+        localStorage.removeItem("admin-user");
+      } catch {
+        localStorage.removeItem("admin-user");
+      }
     }
 
     // Tentar obter do Supabase

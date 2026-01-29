@@ -5,6 +5,26 @@ import { MenuItem, Category } from "@/lib/validation";
 import { syncFromSupabase } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
+// Helper function to create a debounced refresh
+const createDebouncedRefresh = (fn: () => Promise<void>, delayMs: number) => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  let isScheduled = false;
+
+  return () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    if (!isScheduled) {
+      isScheduled = true;
+      timeoutId = setTimeout(async () => {
+        await fn();
+        isScheduled = false;
+      }, delayMs);
+    }
+  };
+};
+
 export interface SyncedDataState {
   categories: Category[];
   products: MenuItem[];
@@ -26,6 +46,7 @@ interface BroadcastMessage {
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
+  setOptimisticData: (data: { categories?: Category[]; products?: MenuItem[] }) => void;
 } {
   const [state, setState] = useState<SyncedDataState>({
     categories: [],
@@ -39,6 +60,7 @@ export function useSyncedData(): SyncedDataState & {
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const initializedRef = useRef(false);
 
   // Atualizar localStorage para fallback
   const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[]) => {
@@ -46,24 +68,41 @@ export function useSyncedData(): SyncedDataState & {
       localStorage.setItem("cardapio-categories", JSON.stringify(categories));
       localStorage.setItem("cardapio-products", JSON.stringify(products));
     } catch (error) {
-      console.error("Erro ao salvar em localStorage:", error);
+      // Error saving to localStorage - continue without it
     }
   }, []);
 
   // Carregar dados do localStorage como fallback
   const loadFromLocalStorage = useCallback((): { categories: Category[]; products: MenuItem[] } => {
-    try {
-      const categories = localStorage.getItem("cardapio-categories");
-      const products = localStorage.getItem("cardapio-products");
+    const result = { categories: [] as Category[], products: [] as MenuItem[] };
 
-      return {
-        categories: categories ? JSON.parse(categories) : [],
-        products: products ? JSON.parse(products) : [],
-      };
+    try {
+      const categoriesStr = localStorage.getItem("cardapio-categories");
+      if (categoriesStr) {
+        try {
+          result.categories = JSON.parse(categoriesStr);
+        } catch {
+          localStorage.removeItem("cardapio-categories");
+        }
+      }
     } catch (error) {
-      console.error("Erro ao carregar localStorage:", error);
-      return { categories: [], products: [] };
+      // Ignore localStorage errors
     }
+
+    try {
+      const productsStr = localStorage.getItem("cardapio-products");
+      if (productsStr) {
+        try {
+          result.products = JSON.parse(productsStr);
+        } catch {
+          localStorage.removeItem("cardapio-products");
+        }
+      }
+    } catch (error) {
+      // Ignore localStorage errors
+    }
+
+    return result;
   }, []);
 
   // Broadcast para outras abas
@@ -77,21 +116,24 @@ export function useSyncedData(): SyncedDataState & {
     }
   }, []);
 
+  // Funcao para atualizar dados otimisticamente (sem loading)
+  const setOptimisticData = useCallback((data: { categories?: Category[]; products?: MenuItem[] }) => {
+    setState((prev) => ({
+      ...prev,
+      categories: data.categories !== undefined ? data.categories : prev.categories,
+      products: data.products !== undefined ? data.products : prev.products,
+    }));
+  }, []);
+
   // Funcao principal para sincronizar
   const refresh = useCallback(async () => {
-    console.log("[useSyncedData] Iniciando refresh...");
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
+      const cached = loadFromLocalStorage();
+
       // Tentar carregar do Supabase
       const data = await syncFromSupabase();
-
-      // Debug: verificar imagens recebidas
-      const productsWithImages = data.products.filter((p) => p.image && p.image.length > 0);
-      console.log(`[useSyncedData] Recebidos ${data.products.length} produtos, ${productsWithImages.length} com imagem`);
-      productsWithImages.forEach((p) => {
-        console.log(`[useSyncedData] Produto "${p.name}" imagem: ${p.image?.substring(0, 60)}...`);
-      });
 
       setState((prev) => ({
         ...prev,
@@ -108,7 +150,6 @@ export function useSyncedData(): SyncedDataState & {
       // Notificar outras abas
       broadcastUpdate(data.categories, data.products);
     } catch (error) {
-      console.error("[useSyncedData] Erro ao sincronizar:", error);
       // Fallback para localStorage
       const fallback = loadFromLocalStorage();
 
@@ -128,8 +169,15 @@ export function useSyncedData(): SyncedDataState & {
 
   // Setup de Realtime e BroadcastChannel
   useEffect(() => {
+    // Usar flag para evitar múltiplas inicializações
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     // Carregar dados iniciais
     refresh();
+
+    // Debounced refresh para realtime listeners (evita múltiplas sincronizações simultâneas)
+    const debouncedRefresh = createDebouncedRefresh(refresh, 2000);
 
     // Setup BroadcastChannel para sincronizar entre abas
     try {
@@ -145,7 +193,7 @@ export function useSyncedData(): SyncedDataState & {
         }
       };
     } catch (error) {
-      console.warn("BroadcastChannel não suportado:", error);
+      // BroadcastChannel not supported - continue without cross-tab sync
     }
 
     // Setup de Realtime do Supabase
@@ -157,28 +205,23 @@ export function useSyncedData(): SyncedDataState & {
           "postgres_changes",
           { event: "*", schema: "public", table: "categories" },
           () => {
-            console.log("📡 [Realtime] Mudança detectada em categories");
-            refresh();
+            debouncedRefresh();
           }
         )
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "menu_items" },
           () => {
-            console.log("📡 [Realtime] Mudança detectada em menu_items");
-            refresh();
+            debouncedRefresh();
           }
         )
         .on("system", { event: "down" }, () => {
-          console.warn("❌ [Realtime] Desconectado do servidor");
           setState((prev) => ({ ...prev, realtimeConnected: false }));
         })
         .on("system", { event: "up" }, () => {
-          console.log("✅ [Realtime] Conectado ao servidor");
           setState((prev) => ({ ...prev, realtimeConnected: true }));
         })
         .subscribe((status) => {
-          console.log("🔗 [Realtime] Status de subscrição:", status);
           if (status === "SUBSCRIBED") {
             setState((prev) => ({ ...prev, realtimeConnected: true }));
           }
@@ -190,16 +233,13 @@ export function useSyncedData(): SyncedDataState & {
         }
       };
     } catch (error) {
-      console.error("❌ [Realtime] Falha ao conectar:", error);
       setState((prev) => ({ ...prev, realtimeConnected: false }));
     }
 
-    // Polling contínuo (a cada 30 segundos) - garante atualização entre aparelhos mesmo sem Realtime
-    console.log("📡 [Polling] Iniciando polling contínuo a cada 30 segundos");
+    // Polling contínuo (a cada 60 segundos) - garante atualização entre aparelhos mesmo sem Realtime
     pollIntervalRef.current = setInterval(() => {
-      console.log("📡 [Polling] Sincronizando dados...");
       refresh();
-    }, 30000);
+    }, 60000);
 
     // Cleanup
     return () => {
@@ -209,10 +249,11 @@ export function useSyncedData(): SyncedDataState & {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [refresh]);
+  }, []);
 
   return {
     ...state,
     refresh,
+    setOptimisticData,
   };
 }

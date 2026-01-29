@@ -7,6 +7,7 @@
  */
 
 import { MenuItem, Category } from "./validation";
+import { validateAndSanitizeSyncData } from "./sanitize";
 import {
   logger,
   getRequestQueue,
@@ -167,7 +168,7 @@ interface CacheEntry<T> {
 
 class LocalCache {
   private cache: Map<string, CacheEntry<unknown>> = new Map();
-  private readonly defaultTTL = 30000; // 30 segundos
+  private readonly defaultTTL = 60000; // 60 segundos
 
   set<T>(key: string, data: T, ttl?: number): void {
     const now = Date.now();
@@ -409,8 +410,18 @@ async function executeSyncTo(
   const startTime = Date.now();
 
   try {
+    // Sanitizar e validar dados antes de enviar
+    let sanitizedData: { products: MenuItem[]; categories: Category[] };
+
+    try {
+      sanitizedData = validateAndSanitizeSyncData(products, categories);
+    } catch (sanitizeError) {
+      const message = sanitizeError instanceof Error ? sanitizeError.message : "Erro ao validar dados";
+      throw new Error(`Erro ao validar dados antes de sincronizar: ${message}`);
+    }
+
     // Adicionar timestamp de atualizacao aos produtos
-    const productsWithTimestamp = products.map((p) => ({
+    const productsWithTimestamp = sanitizedData.products.map((p) => ({
       ...p,
       updated_at: new Date().toISOString(),
     }));
@@ -422,7 +433,7 @@ async function executeSyncTo(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             products: productsWithTimestamp,
-            categories,
+            categories: sanitizedData.categories,
           }),
           externalSignal: signal,
         });
@@ -436,18 +447,18 @@ async function executeSyncTo(
     );
 
     const duration = Date.now() - startTime;
-    logger.info("API", "syncToSupabase concluido", { duration });
+    logger.info("API", "Sincronizacao concluida", { duration });
 
     onProgress?.("success", "Dados sincronizados com sucesso");
   } catch (error) {
     const duration = Date.now() - startTime;
 
     if (isAbortError(error)) {
-      logger.warn("API", "syncToSupabase abortado", { duration });
+      logger.warn("API", "Sincronizacao abortada", { duration });
       throw error;
     }
 
-    logger.error("API", "syncToSupabase falhou", {
+    logger.error("API", "Sincronizacao falhou", {
       error: error instanceof Error ? error.message : "Unknown error",
       duration,
     });

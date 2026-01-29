@@ -85,7 +85,7 @@ interface LogEntry {
 class RequestLogger {
   private logs: LogEntry[] = [];
   private maxLogs = 1000;
-  private enabled = true;
+  private enabled = false;
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;

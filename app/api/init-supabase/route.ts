@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { categories as defaultCategories, menuItems as defaultMenuItems } from "@/data/menu";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    "Variáveis de ambiente Supabase não configuradas. " +
+    "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  );
+}
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET() {
@@ -44,8 +52,11 @@ export async function GET() {
 
       if (catError) {
         console.error("Erro ao inserir categorias:", catError);
+        const msg = catError && typeof catError === "object" && "message" in catError
+          ? String((catError as { message: unknown }).message)
+          : String(catError);
         return NextResponse.json(
-          { error: "Erro ao inserir categorias", details: catError.message },
+          { error: "Erro ao inserir categorias", details: msg },
           { status: 500 }
         );
       }
@@ -61,8 +72,11 @@ export async function GET() {
 
       if (prodError) {
         console.error("Erro ao inserir produtos:", prodError);
+        const msg = prodError && typeof prodError === "object" && "message" in prodError
+          ? String((prodError as { message: unknown }).message)
+          : String(prodError);
         return NextResponse.json(
-          { error: "Erro ao inserir produtos", details: prodError.message },
+          { error: "Erro ao inserir produtos", details: msg },
           { status: 500 }
         );
       }
@@ -74,10 +88,12 @@ export async function GET() {
       categoriesCount: defaultCategories.length,
       productsCount: defaultMenuItems.length,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
     console.error("Erro na inicialização:", error);
     return NextResponse.json(
-      { error: "Erro ao inicializar Supabase", details: error.message },
+      { error: "Erro ao inicializar Supabase", details: errorMessage },
       { status: 500 }
     );
   }

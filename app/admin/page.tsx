@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { v4 as uuid } from "uuid";
 import { AdminLogin } from "@/components/AdminLogin";
 import { ProductForm } from "@/components/ProductForm";
 import { AdminProductList } from "@/components/AdminProductList";
@@ -119,9 +120,17 @@ export default function AdminPage() {
       return;
     }
 
+    const nameExists = cardapio.categories.some(
+      (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+    );
+    if (nameExists) {
+      toast.error("Categoria com este nome já existe!");
+      return;
+    }
+
     try {
       const newCategory: Category = {
-        id: Date.now().toString(),
+        id: uuid(),
         name: newCategoryName.trim(),
       };
 

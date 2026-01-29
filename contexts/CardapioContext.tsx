@@ -36,17 +36,18 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const updateProduct = useCallback(
     async (product: MenuItem) => {
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousProducts = syncedData.products;
+      const optimisticProducts = previousProducts.map((p) => (p.id === product.id ? product : p));
+      syncedData.setOptimisticData({ products: optimisticProducts });
+
       try {
-        console.log("[CardapioContext] Atualizando produto:", product.id);
-        const updatedProducts = syncedData.products.map((p) => (p.id === product.id ? product : p));
         const validCats = getValidCategories(syncedData.categories);
-        await syncToSupabase(updatedProducts, validCats);
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Produto atualizado com sucesso");
+        await syncToSupabase(optimisticProducts, validCats);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao atualizar produto:", error);
-        throw error; // Re-throw para que o componente pai possa tratar
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({ products: previousProducts });
+        throw error;
       }
     },
     [syncedData]
@@ -54,17 +55,18 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const deleteProduct = useCallback(
     async (id: string) => {
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousProducts = syncedData.products;
+      const optimisticProducts = previousProducts.filter((p) => p.id !== id);
+      syncedData.setOptimisticData({ products: optimisticProducts });
+
       try {
-        console.log("[CardapioContext] Deletando produto:", id);
-        const updatedProducts = syncedData.products.filter((p) => p.id !== id);
         const validCats = getValidCategories(syncedData.categories);
-        await syncToSupabase(updatedProducts, validCats);
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Produto deletado com sucesso");
+        await syncToSupabase(optimisticProducts, validCats);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao deletar produto:", error);
-        throw error; // Re-throw para que o componente pai possa tratar
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({ products: previousProducts });
+        throw error;
       }
     },
     [syncedData]
@@ -72,17 +74,18 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const addProduct = useCallback(
     async (product: MenuItem) => {
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousProducts = syncedData.products;
+      const optimisticProducts = [...previousProducts, product];
+      syncedData.setOptimisticData({ products: optimisticProducts });
+
       try {
-        console.log("[CardapioContext] Adicionando produto:", product.name);
-        const updatedProducts = [...syncedData.products, product];
         const validCats = getValidCategories(syncedData.categories);
-        await syncToSupabase(updatedProducts, validCats);
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Produto adicionado com sucesso");
+        await syncToSupabase(optimisticProducts, validCats);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao adicionar produto:", error);
-        throw error; // Re-throw para que o componente pai possa tratar
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({ products: previousProducts });
+        throw error;
       }
     },
     [syncedData]
@@ -90,18 +93,19 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const updateCategory = useCallback(
     async (category: Category) => {
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousCategories = syncedData.categories;
+      const validCats = getValidCategories(previousCategories);
+      const optimisticCategories = validCats.map((c) =>
+        c.id === category.id ? category : c
+      );
+      syncedData.setOptimisticData({ categories: optimisticCategories });
+
       try {
-        console.log("[CardapioContext] Atualizando categoria:", category.id);
-        const validCats = getValidCategories(syncedData.categories);
-        const updatedCategories = validCats.map((c) =>
-          c.id === category.id ? category : c
-        );
-        await syncToSupabase(syncedData.products, updatedCategories);
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Categoria atualizada com sucesso");
+        await syncToSupabase(syncedData.products, optimisticCategories);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao atualizar categoria:", error);
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({ categories: previousCategories });
         throw error;
       }
     },
@@ -110,17 +114,25 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const deleteCategory = useCallback(
     async (id: string) => {
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousCategories = syncedData.categories;
+      const previousProducts = syncedData.products;
+      const validCats = getValidCategories(previousCategories);
+      const optimisticCategories = validCats.filter((c) => c.id !== id);
+      const optimisticProducts = previousProducts.filter((p) => p.category !== id);
+      syncedData.setOptimisticData({
+        categories: optimisticCategories,
+        products: optimisticProducts
+      });
+
       try {
-        console.log("[CardapioContext] Deletando categoria:", id);
-        const validCats = getValidCategories(syncedData.categories);
-        const updatedCategories = validCats.filter((c) => c.id !== id);
-        const updatedProducts = syncedData.products.filter((p) => p.category !== id);
-        await syncToSupabase(updatedProducts, updatedCategories);
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Categoria deletada com sucesso");
+        await syncToSupabase(optimisticProducts, optimisticCategories);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao deletar categoria:", error);
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({
+          categories: previousCategories,
+          products: previousProducts
+        });
         throw error;
       }
     },
@@ -129,19 +141,23 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const addCategory = useCallback(
     async (category: Category) => {
+      // Validar que a categoria tem ID válido
+      if (!category.id || category.id === null || category.id === undefined) {
+        throw new Error("Categoria deve ter um ID válido");
+      }
+
+      // OPTIMISTIC UPDATE: Atualizar UI imediatamente
+      const previousCategories = syncedData.categories;
+      const validCurrentCategories = getValidCategories(previousCategories);
+      const optimisticCategories = [...validCurrentCategories, category];
+      syncedData.setOptimisticData({ categories: optimisticCategories });
+
       try {
-        console.log("[CardapioContext] Adicionando categoria:", category.name, "ID:", category.id);
-        // Validar que a categoria tem ID válido
-        if (!category.id || category.id === null || category.id === undefined) {
-          throw new Error("Categoria deve ter um ID válido");
-        }
-        const updatedCategories = [...getValidCategories(syncedData.categories), category];
-        await syncToSupabase(syncedData.products, getValidCategories(updatedCategories));
-        // Refresh para sincronizar em tempo real
-        await syncedData.refresh();
-        console.log("[CardapioContext] Categoria adicionada com sucesso");
+        // Sincronizar com Supabase em background
+        await syncToSupabase(syncedData.products, optimisticCategories);
       } catch (error) {
-        console.error("[CardapioContext] Erro ao adicionar categoria:", error);
+        // REVERT: Restaurar estado anterior em caso de erro
+        syncedData.setOptimisticData({ categories: previousCategories });
         throw error;
       }
     },
@@ -150,13 +166,9 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
   const syncToCloud = useCallback(async () => {
     try {
-      console.log("[CardapioContext] Sincronizando com nuvem...");
       const validCats = getValidCategories(syncedData.categories);
       await syncToSupabase(syncedData.products, validCats);
-      await syncedData.refresh();
-      console.log("[CardapioContext] Sincronizacao concluida");
     } catch (error) {
-      console.error("[CardapioContext] Erro na sincronizacao:", error);
       throw error;
     }
   }, [syncedData]);

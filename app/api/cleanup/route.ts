@@ -35,8 +35,11 @@ export async function POST(request: NextRequest) {
 
       if (deleteError) {
         console.error("[CLEANUP] Erro ao deletar categorias inválidas:", deleteError);
+        const msg = deleteError && typeof deleteError === "object" && "message" in deleteError
+          ? String((deleteError as { message: unknown }).message)
+          : String(deleteError);
         return NextResponse.json(
-          { error: "Erro ao deletar categorias inválidas", details: deleteError.message },
+          { error: "Erro ao deletar categorias inválidas", details: msg },
           { status: 500 }
         );
       }
@@ -50,10 +53,12 @@ export async function POST(request: NextRequest) {
       deletedCategories: invalidIds.length,
       totalCategoriesChecked: allCategories?.length || 0,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
     console.error("[CLEANUP] Erro na limpeza:", error);
     return NextResponse.json(
-      { error: "Erro ao fazer limpeza", details: error.message },
+      { error: "Erro ao fazer limpeza", details: errorMessage },
       { status: 500 }
     );
   }

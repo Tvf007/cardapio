@@ -2,7 +2,10 @@
 
 import { MenuItem } from "@/lib/validation";
 import { useState } from "react";
+import { v4 as uuid } from "uuid";
 import { RippleButton } from "./RippleButton";
+import { useCardapio } from "@/contexts/CardapioContext";
+import { useToast } from "@/components/Toast";
 
 interface ProductFormProps {
   product?: MenuItem;
@@ -19,9 +22,12 @@ export function ProductForm({
   onCancel,
   isLoading: externalLoading = false,
 }: ProductFormProps) {
+  const cardapio = useCardapio();
+  const toast = useToast();
+
   const [formData, setFormData] = useState<MenuItem>(
     product || {
-      id: Date.now().toString(),
+      id: uuid(),
       name: "",
       description: "",
       price: 0,
@@ -80,6 +86,19 @@ export function ProductForm({
 
     if (!formData.category) {
       setError("Selecione uma categoria");
+      return;
+    }
+
+    // Check for duplicate product name in the same category
+    const duplicateProduct = cardapio.products.find(
+      (p) =>
+        p.category === formData.category &&
+        p.name.toLowerCase() === formData.name.trim().toLowerCase() &&
+        p.id !== formData.id
+    );
+
+    if (duplicateProduct) {
+      toast.error("Produto com este nome já existe nesta categoria!");
       return;
     }
 

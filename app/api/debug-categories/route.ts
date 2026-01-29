@@ -11,7 +11,10 @@ export async function GET() {
 
     if (error) {
       console.error("[DEBUG] Erro:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const msg = error && typeof error === "object" && "message" in error
+        ? String((error as { message: unknown }).message)
+        : String(error);
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
 
     console.log("[DEBUG] Categorias encontradas:", JSON.stringify(categories, null, 2));
@@ -34,7 +37,9 @@ export async function GET() {
       raw_categories: categories,
       analysis,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

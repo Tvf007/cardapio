@@ -74,7 +74,7 @@ export function MenuItem({ item, categories }: MenuItemProps) {
           <img
             src={item.image}
             alt={item.name}
-            className="w-full h-full object-cover transition-transform duration-500"
+            className="w-full h-full object-contain transition-transform duration-500 bg-white"
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.1)';
             }}
