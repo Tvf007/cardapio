@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import crypto from "crypto";
 
 export interface AuthUser {
   id: string;
@@ -6,25 +7,36 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-// Credenciais de teste para desenvolvimento (carregado da variável de ambiente)
-const DEMO_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+// Hash da senha armazenado seguramente no .env (nunca a senha em texto plano!)
+const ADMIN_PASSWORD_HASH = process.env.NEXT_PUBLIC_ADMIN_PASSWORD_HASH;
 
-if (!DEMO_PASSWORD) {
-  console.warn("⚠️ NEXT_PUBLIC_ADMIN_PASSWORD não configurada. Auth desabilitada.");
+if (!ADMIN_PASSWORD_HASH) {
+  console.warn("⚠️ NEXT_PUBLIC_ADMIN_PASSWORD_HASH não configurada. Auth desabilitada.");
+}
+
+// Função para comparar senha com hash SHA256
+function verifyPassword(password: string, hash: string): boolean {
+  try {
+    const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+    return passwordHash === hash;
+  } catch (error) {
+    console.error("Erro ao verificar senha:", error);
+    return false;
+  }
 }
 
 // Fazer login com apenas senha
 export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
-    if (!DEMO_PASSWORD) {
+    if (!ADMIN_PASSWORD_HASH) {
       return {
         user: null,
-        error: "Autenticação não configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD",
+        error: "Autenticação não configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
       };
     }
 
-    // Permitir login de teste apenas com senha
-    if (password === DEMO_PASSWORD) {
+    // Verificar senha de forma segura (comparando hashes, não strings)
+    if (verifyPassword(password, ADMIN_PASSWORD_HASH)) {
       const user: AuthUser = {
         id: "admin-001",
         email: "admin@cardapio.local",
