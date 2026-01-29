@@ -204,12 +204,12 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={() => logoInputRef.current?.click()}
-                className="relative w-16 h-16 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer"
+                className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer flex-shrink-0"
                 style={{ backgroundColor: "#7c4e42" }}
                 title="Clique para alterar logo"
               >
@@ -220,7 +220,7 @@ export default function AdminPage() {
                     className="w-full h-full object-cover rounded-lg"
                   />
                 ) : (
-                  <span className="text-3xl">🍽️</span>
+                  <span className="text-2xl sm:text-3xl">🍽️</span>
                 )}
                 <span className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all duration-200">
                   <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">↻</span>
@@ -234,16 +234,16 @@ export default function AdminPage() {
                 className="hidden"
                 aria-label="Upload logo"
               />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Cardápio Caixa Freitas</h1>
-                <p className="text-xs text-gray-600">
-                  Painel de Administração - Logado como <span className="font-semibold">{user.email}</span>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">Cardápio Caixa Freitas</h1>
+                <p className="text-xs text-gray-600 truncate">
+                  Painel Admin - <span className="font-semibold">{user.email}</span>
                 </p>
               </div>
             </div>
             <RippleButton
               onClick={handleLogout}
-              className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg"
+              className="bg-red-500 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base flex-shrink-0"
             >
               Sair
             </RippleButton>
@@ -252,37 +252,37 @@ export default function AdminPage() {
       </header>
 
       {/* Tab Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="flex gap-2 border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 mt-6">
+        <div className="flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
               activeTab === "dashboard"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            📊 Dashboard
+            📊 <span className="hidden sm:inline">Dashboard</span>
           </button>
           <button
             onClick={() => setActiveTab("categorias")}
-            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
               activeTab === "categorias"
                 ? "border-green-600 text-green-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            📂 Categorias
+            📂 <span className="hidden sm:inline">Categorias</span>
           </button>
           <button
             onClick={() => setActiveTab("produtos")}
-            className={`px-6 py-3 font-medium transition-all duration-200 border-b-2 ${
+            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
               activeTab === "produtos"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            🍽️ Produtos
+            🍽️ <span className="hidden sm:inline">Produtos</span>
           </button>
         </div>
       </div>
@@ -293,28 +293,28 @@ export default function AdminPage() {
         {activeTab === "dashboard" && (
           <div className="space-y-8">
             {/* Share Section */}
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">📋 Compartilhe o Cardápio</h2>
-              <p className="text-gray-700 mb-6">Copie o link abaixo e compartilhe com seus clientes:</p>
-              <div className="flex gap-3 mb-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-4 sm:p-8 shadow-sm">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">📋 Compartilhe o Cardápio</h2>
+              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-6">Copie o link abaixo e compartilhe com seus clientes:</p>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
                 <input
                   type="text"
                   value={cardapioUrl}
                   readOnly
-                  className="flex-1 px-4 py-3 border border-blue-300 rounded-lg bg-white font-mono text-sm"
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-blue-300 rounded-lg bg-white font-mono text-xs sm:text-sm"
                 />
                 <RippleButton
                   onClick={() => {
                     navigator.clipboard.writeText(cardapioUrl);
-                    toast.success("Link copiado com sucesso!");
+                    toast.success("Link copiado!");
                   }}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base"
                 >
                   📋 Copiar
                 </RippleButton>
               </div>
-              <p className="text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                💡 Dica: Use um gerador de QR Code online com este link para criar um QR Code e compartilhe com seus clientes!
+              <p className="text-xs sm:text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                💡 Dica: Use um QR Code online para compartilhar com clientes!
               </p>
             </div>
 
@@ -358,15 +358,15 @@ export default function AdminPage() {
         {/* Categorias Tab */}
         {activeTab === "categorias" && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="border-b border-gray-200 px-8 py-6">
-              <h2 className="text-2xl font-bold text-gray-900">Gerenciar Categorias</h2>
+            <div className="border-b border-gray-200 px-4 sm:px-8 py-4 sm:py-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gerenciar Categorias</h2>
             </div>
 
-            <div className="p-8">
+            <div className="p-4 sm:p-8">
               {/* New Category Form */}
-              <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Adicionar Nova Categoria</h3>
-                <div className="flex gap-3">
+              <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Adicionar Nova Categoria</h3>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <input
                     type="text"
                     value={newCategoryName}
@@ -376,13 +376,13 @@ export default function AdminPage() {
                         handleAddCategory();
                       }
                     }}
-                    placeholder="Digite o nome da categoria..."
+                    placeholder="Digite o nome..."
                     autoComplete="off"
-                    className="flex-1 px-4 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 font-medium transition-all"
+                    className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900 font-medium transition-all text-sm sm:text-base"
                   />
                   <RippleButton
                     onClick={handleAddCategory}
-                    className="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                    className="bg-green-600 text-white px-4 sm:px-8 py-2 sm:py-3 rounded-lg font-bold hover:bg-green-700 transition-all shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base"
                   >
                     + Adicionar
                   </RippleButton>
@@ -390,14 +390,14 @@ export default function AdminPage() {
               </div>
 
               {/* Categories List */}
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {cardapio.categories.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">Nenhuma categoria criada ainda</p>
                 ) : (
                   cardapio.categories.map((category) => (
                     <div
                       key={category.id}
-                      className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all gap-3 sm:gap-0"
                     >
                       {editingCategoryId === category.id ? (
                         <>
@@ -405,18 +405,18 @@ export default function AdminPage() {
                             type="text"
                             value={editingCategoryName}
                             onChange={(e) => setEditingCategoryName(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 font-semibold"
+                            className="flex-1 px-3 py-2 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 font-semibold text-sm sm:text-base"
                           />
-                          <div className="flex gap-2 ml-4">
+                          <div className="flex gap-2 w-full sm:w-auto sm:ml-4">
                             <RippleButton
                               onClick={() => handleEditCategory(category.id)}
-                              className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700"
+                              className="flex-1 sm:flex-none bg-blue-600 text-white px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium hover:bg-blue-700"
                             >
                               ✓ Salvar
                             </RippleButton>
                             <RippleButton
                               onClick={() => setEditingCategoryId(null)}
-                              className="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-medium hover:bg-gray-400"
+                              className="flex-1 sm:flex-none bg-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium hover:bg-gray-400"
                             >
                               ✕ Cancelar
                             </RippleButton>
@@ -424,23 +424,23 @@ export default function AdminPage() {
                         </>
                       ) : (
                         <>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{category.name}</h3>
                             <p className="text-xs text-gray-500">ID: {category.id}</p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 w-full sm:w-auto">
                             <RippleButton
                               onClick={() => {
                                 setEditingCategoryId(category.id);
                                 setEditingCategoryName(category.name);
                               }}
-                              className="bg-blue-100 text-blue-600 px-4 py-2 rounded text-sm font-medium hover:bg-blue-200"
+                              className="flex-1 sm:flex-none bg-blue-100 text-blue-600 px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium hover:bg-blue-200"
                             >
                               ✏️ Editar
                             </RippleButton>
                             <RippleButton
                               onClick={() => handleDeleteCategory(category.id)}
-                              className="bg-red-100 text-red-600 px-4 py-2 rounded text-sm font-medium hover:bg-red-200"
+                              className="flex-1 sm:flex-none bg-red-100 text-red-600 px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium hover:bg-red-200"
                             >
                               🗑️ Deletar
                             </RippleButton>
@@ -478,15 +478,16 @@ export default function AdminPage() {
 
             {/* Products Button */}
             {!showProductForm && (
-              <div className="flex justify-center">
+              <div className="flex justify-center sticky bottom-4 z-40">
                 <RippleButton
                   onClick={() => {
                     setEditingProduct(null);
                     setShowProductForm(true);
                   }}
-                  className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg text-lg"
+                  className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl text-base sm:text-lg flex items-center gap-2"
                 >
-                  + Novo Produto
+                  <span className="text-xl">+</span>
+                  <span>Novo Produto</span>
                 </RippleButton>
               </div>
             )}

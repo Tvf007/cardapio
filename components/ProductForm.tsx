@@ -114,25 +114,25 @@ export function ProductForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-gray-200">
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8 border border-gray-200">
+      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
         {product ? "Editar Produto" : "Novo Produto"}
       </h2>
 
       {/* Error Message */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-700 text-sm font-medium">{error}</p>
+        <div className="mb-3 sm:mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-700 text-xs sm:text-sm font-medium">{error}</p>
         </div>
       )}
 
       {/* Image Preview and Upload */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="mb-4 sm:mb-6">
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
           Foto do Produto
         </label>
         <label className="cursor-pointer block">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-all duration-300" style={{ '--hover-border': '#7c4e42' } as any} onMouseEnter={(e) => {
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center transition-all duration-300" style={{ '--hover-border': '#7c4e42' } as any} onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = '#7c4e42';
             e.currentTarget.style.backgroundColor = '#f5eee5';
           }} onMouseLeave={(e) => {
@@ -144,7 +144,7 @@ export function ProductForm({
                 <img
                   src={imagePreview}
                   alt="Preview"
-                  className="w-full h-40 object-cover rounded-md"
+                  className="w-full h-32 sm:h-40 object-cover rounded-md"
                 />
                 <RippleButton
                   type="button"
@@ -152,15 +152,15 @@ export function ProductForm({
                     setImagePreview("");
                     setFormData({ ...formData, image: "" });
                   }}
-                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-7 h-7 flex items-center justify-center transition-colors text-sm"
+                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center transition-colors text-xs sm:text-sm"
                 >
                   ✕
                 </RippleButton>
               </div>
             ) : (
-              <div className="py-6">
-                <p className="text-3xl mb-2">📸</p>
-                <p className="text-gray-700 text-sm font-medium">Clique para adicionar uma foto</p>
+              <div className="py-4 sm:py-6">
+                <p className="text-2xl sm:text-3xl mb-2">📸</p>
+                <p className="text-gray-700 text-xs sm:text-sm font-medium">Clique para adicionar uma foto</p>
               </div>
             )}
           </div>
@@ -174,9 +174,9 @@ export function ProductForm({
       </div>
 
       {/* Name and Price */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
             Nome
           </label>
           <input
@@ -184,7 +184,7 @@ export function ProductForm({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="Ex: Frango à Parmegiana"
-            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
+            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
             onFocus={(e) => {
               e.target.style.borderColor = '#7c4e42';
               e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
@@ -199,7 +199,7 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
             Preço (R$)
           </label>
           <input
@@ -210,7 +210,7 @@ export function ProductForm({
               setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : undefined as any })
             }
             placeholder="0,00"
-            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
+            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
             onFocus={(e) => {
               e.target.style.borderColor = '#7c4e42';
               e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
@@ -226,9 +226,9 @@ export function ProductForm({
       </div>
 
       {/* Category and Availability */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
             Categoria
           </label>
           <select
@@ -236,7 +236,7 @@ export function ProductForm({
             onChange={(e) =>
               setFormData({ ...formData, category: e.target.value })
             }
-            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 focus:outline-none"
+            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 focus:outline-none"
             onFocus={(e) => {
               e.currentTarget.style.borderColor = '#7c4e42';
               e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
