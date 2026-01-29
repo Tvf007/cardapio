@@ -46,10 +46,10 @@ export function ProductForm({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar tamanho máximo de 5MB
-      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      // Validar tamanho máximo de 2MB (limite reduzido para mobile)
+      const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
       if (file.size > MAX_FILE_SIZE) {
-        alert("Imagem muito grande! Máximo permitido é 5MB");
+        alert("Imagem muito grande! Máximo permitido é 2MB");
         return;
       }
 
@@ -59,11 +59,42 @@ export function ProductForm({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
+      // Comprimir imagem antes de converter para base64
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        // Definir dimensões máximas (800x600)
+        const maxWidth = 800;
+        const maxHeight = 600;
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // Converter com qualidade 0.7 para reduzir tamanho
+        const result = canvas.toDataURL("image/jpeg", 0.7);
         setImagePreview(result);
         setFormData({ ...formData, image: result });
+      };
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
       };
       reader.readAsDataURL(file);
     }

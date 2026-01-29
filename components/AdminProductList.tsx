@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { MenuItem } from "@/lib/validation";
 
 interface AdminProductListProps {
@@ -72,14 +71,12 @@ export function AdminProductList({
           className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-gray-100 flex flex-col"
         >
           {/* Image Section */}
-          <div className="relative w-full h-40 bg-gray-100 flex-shrink-0">
+          <div className="relative w-full h-40 bg-gray-100 flex-shrink-0 overflow-hidden">
             {product.image && product.image.trim() !== "" ? (
-              <Image
+              <img
                 src={product.image}
                 alt={product.name}
-                fill
-                className="object-cover"
-                unoptimized
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-300">

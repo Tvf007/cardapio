@@ -258,36 +258,39 @@ export default function AdminPage() {
 
       {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 mt-6">
-        <div className="flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-0 sm:gap-2 border-b border-gray-200 overflow-x-auto">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
+            className={`px-2.5 sm:px-6 py-3 font-medium text-xs sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap flex items-center gap-1 sm:gap-2 ${
               activeTab === "dashboard"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            📊 <span className="hidden sm:inline">Dashboard</span>
+            <span className="text-base sm:text-lg">📊</span>
+            <span>Dashboard</span>
           </button>
           <button
             onClick={() => setActiveTab("categorias")}
-            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
+            className={`px-2.5 sm:px-6 py-3 font-medium text-xs sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap flex items-center gap-1 sm:gap-2 ${
               activeTab === "categorias"
                 ? "border-green-600 text-green-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            📂 <span className="hidden sm:inline">Categorias</span>
+            <span className="text-base sm:text-lg">📂</span>
+            <span>Categorias</span>
           </button>
           <button
             onClick={() => setActiveTab("produtos")}
-            className={`px-3 sm:px-6 py-3 font-medium text-sm sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap ${
+            className={`px-2.5 sm:px-6 py-3 font-medium text-xs sm:text-base transition-all duration-200 border-b-2 whitespace-nowrap flex items-center gap-1 sm:gap-2 ${
               activeTab === "produtos"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
             }`}
           >
-            🍽️ <span className="hidden sm:inline">Produtos</span>
+            <span className="text-base sm:text-lg">🍽️</span>
+            <span>Produtos</span>
           </button>
         </div>
       </div>
