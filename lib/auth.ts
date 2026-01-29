@@ -28,15 +28,21 @@ function verifyPassword(password: string, hash: string): boolean {
 // Fazer login com apenas senha
 export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
+    console.log("[AUTH] loginWithPassword chamado");
+    console.log("[AUTH] ADMIN_PASSWORD_HASH definido?", !!ADMIN_PASSWORD_HASH);
+
     if (!ADMIN_PASSWORD_HASH) {
+      console.error("[AUTH] ADMIN_PASSWORD_HASH não configurada!");
       return {
         user: null,
         error: "Autenticação não configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
       };
     }
 
+    console.log("[AUTH] Verificando senha...");
     // Verificar senha de forma segura (comparando hashes, não strings)
     if (verifyPassword(password, ADMIN_PASSWORD_HASH)) {
+      console.log("[AUTH] ✅ Senha verificada com sucesso!");
       const user: AuthUser = {
         id: "admin-001",
         email: "admin@cardapio.local",
@@ -53,8 +59,10 @@ export async function loginWithPassword(password: string): Promise<{ user: AuthU
       };
     }
 
+    console.log("[AUTH] ❌ Senha incorreta!");
     return { user: null, error: "Senha incorreta" };
   } catch (error) {
+    console.error("[AUTH] Exceção no loginWithPassword:", error);
     return { user: null, error: error instanceof Error ? error.message : "Erro ao fazer login" };
   }
 }

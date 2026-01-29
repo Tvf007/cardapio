@@ -43,18 +43,23 @@ export default function AdminPage() {
   const handleLogin = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log("[DEBUG] handleLogin chamado com senha:", password);
       const result = await loginWithPassword(password);
+      console.log("[DEBUG] Resultado do login:", result);
 
       if (result.error) {
+        console.error("[DEBUG] Erro de login:", result.error);
         toast.error(result.error);
         return;
       }
 
       if (result.user) {
+        console.log("[DEBUG] Login bem-sucedido para usuário:", result.user);
         setUser(result.user);
         toast.success("Login realizado com sucesso!");
       }
     } catch (error) {
+      console.error("[DEBUG] Exceção no login:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
