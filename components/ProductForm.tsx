@@ -207,7 +207,7 @@ export function ProductForm({
             step="0.01"
             value={formData.price || ""}
             onChange={(e) =>
-              setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : undefined as any })
+              setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : 0 })
             }
             placeholder="0,00"
             className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"

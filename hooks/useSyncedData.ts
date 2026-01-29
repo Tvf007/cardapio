@@ -177,7 +177,7 @@ export function useSyncedData(): SyncedDataState & {
     refresh();
 
     // Debounced refresh para realtime listeners (evita múltiplas sincronizações simultâneas)
-    const debouncedRefresh = createDebouncedRefresh(refresh, 2000);
+    const debouncedRefresh = createDebouncedRefresh(refresh, 1000);
 
     // Setup BroadcastChannel para sincronizar entre abas
     try {
@@ -236,10 +236,10 @@ export function useSyncedData(): SyncedDataState & {
       setState((prev) => ({ ...prev, realtimeConnected: false }));
     }
 
-    // Polling contínuo (a cada 60 segundos) - garante atualização entre aparelhos mesmo sem Realtime
+    // Polling contínuo (a cada 30 segundos) - garante atualização entre aparelhos mesmo sem Realtime
     pollIntervalRef.current = setInterval(() => {
       refresh();
-    }, 60000);
+    }, 30000);
 
     // Cleanup
     return () => {
