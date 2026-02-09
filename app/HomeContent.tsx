@@ -2,22 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
-import { CategoryFilter, MenuGrid } from "@/components";
-import { categories as defaultCategories, menuItems as defaultMenuItems } from "@/data/menu";
+import { CategoryFilter, MenuGrid, MenuGridSkeleton } from "@/components";
 import { useCardapio } from "@/contexts/CardapioContext";
-import { MenuItem, Category } from "@/lib/validation";
+
+const WHATSAPP_URL = "https://wa.me/5527997835980";
+const INSTAGRAM_URL = "https://www.instagram.com/padariaeconfeitariafreitas";
 
 export function HomeContent() {
   const [logo, setLogo] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const cardapio = useCardapio();
 
-  // Usar categorias e produtos do context, com fallback para dados padrão
-  const categories = cardapio.categories.length > 0 ? cardapio.categories : defaultCategories;
-  const menuItems = cardapio.products.length > 0 ? cardapio.products : defaultMenuItems;
+  const categories = cardapio.categories;
+  const menuItems = cardapio.products;
 
   useEffect(() => {
-    // Carregar logo do localStorage
     const savedLogo = localStorage.getItem("padaria-logo");
     if (savedLogo) {
       setLogo(savedLogo);
@@ -28,50 +27,144 @@ export function HomeContent() {
     ? menuItems.filter((item) => item.category === activeCategory)
     : menuItems;
 
+  const currentYear = new Date().getFullYear();
+
+  // Mostrar skeleton loading enquanto carrega E não há dados em cache
+  if (cardapio.loading && cardapio.categories.length === 0) {
+    return (
+      <div className="min-h-screen bg-amber-50">
+        {/* Header */}
+        <header className="sticky top-0 z-50 border-b shadow-lg header-gradient">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-lg font-bold tracking-widest text-amber-100">
+                PADARIA FREITAS
+              </p>
+              <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg bg-[#d4a574]">
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt="Logo Padaria Freitas"
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <span className="text-6xl" role="img" aria-label="Cardapio">&#127869;</span>
+                )}
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-[3px]">
+                CARDAPIO
+              </h1>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content - Loading */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="mb-8 sm:mb-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Bem-vindo ao nosso cardapio
+            </h2>
+            <p className="text-gray-600">
+              Carregando nossos deliciosos pratos...
+            </p>
+          </div>
+          <MenuGridSkeleton />
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-white mt-16 sm:mt-20 border-t border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+              <div>
+                <h3 className="font-bold text-lg mb-4">PADARIA Freitas</h3>
+                <p className="text-gray-400 text-sm">
+                  Seu cardapio digital moderno e intuitivo
+                </p>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-4">Horario</h3>
+                <p className="text-gray-400 text-sm">
+                  Seg a Sab: 5h30 - 20h30<br />
+                  Domingo: 5h30 - 13h30
+                </p>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-4">Contato</h3>
+                <div className="flex gap-6 justify-center md:justify-start">
+                  <a
+                    href={WHATSAPP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 rounded-full transition-colors duration-200 shadow-md text-white font-medium text-sm"
+                    aria-label="Fale conosco pelo WhatsApp"
+                  >
+                    <FaWhatsapp size={18} />
+                    <span>WhatsApp</span>
+                  </a>
+                  <a
+                    href={INSTAGRAM_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transition-colors duration-200 shadow-md text-white font-medium text-sm"
+                    aria-label="Siga nosso Instagram"
+                  >
+                    <FaInstagram size={18} />
+                    <span>Instagram</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-800 pt-8 text-center">
+              <p className="text-gray-500 text-sm">
+                &copy; {currentYear} PADARIA Freitas. Todos os direitos reservados.
+              </p>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-amber-50">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b shadow-lg" style={{
-        background: 'linear-gradient(to right, #7c4e42, #5a3a2f)',
-        borderColor: '#4a2e24'
-      }}>
+      <header className="sticky top-0 z-50 border-b shadow-lg header-gradient">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div>
-              <p className="text-lg font-bold tracking-widest" style={{ color: '#f5e6d3', letterSpacing: '2px' }}>PADARIA FREITAS</p>
-            </div>
-            <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#d4a574' }}>
+            <p className="text-lg font-bold tracking-widest text-amber-100">
+              PADARIA FREITAS
+            </p>
+            <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg bg-[#d4a574]">
               {logo ? (
                 <img
                   src={logo}
-                  alt="Logo"
+                  alt="Logo Padaria Freitas"
                   className="w-full h-full object-cover rounded-xl"
                 />
               ) : (
-                <span className="text-6xl">🍽️</span>
+                <span className="text-6xl" role="img" aria-label="Cardapio">&#127869;</span>
               )}
             </div>
-            <h1 className="text-5xl font-black text-white tracking-widest" style={{ letterSpacing: '3px' }}>
-              CARDÁPIO
+            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-[3px]">
+              CARDAPIO
             </h1>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero Section */}
-        <div className="mb-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="mb-8 sm:mb-12">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Bem-vindo ao nosso cardápio
+            Bem-vindo ao nosso cardapio
           </h2>
           <p className="text-gray-600">
-            Explore nossas deliciosas opções de lanches, sobremesas e bebidas
+            Explore nossas deliciosas opcoes de lanches, sobremesas e bebidas
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="mb-12">
+        <div className="mb-8 sm:mb-12">
           <CategoryFilter
             categories={categories}
             activeCategory={activeCategory}
@@ -79,7 +172,6 @@ export function HomeContent() {
           />
         </div>
 
-        {/* Menu Grid */}
         <div>
           {filteredItems.length > 0 ? (
             <MenuGrid items={filteredItems} categories={categories} />
@@ -92,70 +184,43 @@ export function HomeContent() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white mt-20 border-t border-gray-800">
+      <footer className="bg-gray-900 text-white mt-16 sm:mt-20 border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-lg mb-4">PADARIA Freitas</h3>
               <p className="text-gray-400 text-sm">
-                Seu cardápio digital moderno e intuitivo
+                Seu cardapio digital moderno e intuitivo
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-lg mb-4">Horário</h3>
+              <h3 className="font-bold text-lg mb-4">Horario</h3>
               <p className="text-gray-400 text-sm">
-                Seg a Sab: 5h30 - 20h30<br/>
+                Seg a Sab: 5h30 - 20h30<br />
                 Domingo: 5h30 - 13h30
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-lg mb-4">Redes Sociais</h3>
-              <div className="flex gap-4 justify-center md:justify-start">
+              <h3 className="font-bold text-lg mb-4">Contato</h3>
+              <div className="flex gap-6 justify-center md:justify-start">
                 <a
-                  href="https://wa.me/5527997835980"
+                  href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-12 h-12 bg-green-600 hover:bg-green-700 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg text-white"
-                  title="WhatsApp"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 rounded-full transition-colors duration-200 shadow-md text-white font-medium text-sm"
+                  aria-label="Fale conosco pelo WhatsApp"
                 >
-                  <FaWhatsapp size={24} />
-                </a>
-                <a
-                  href="https://www.instagram.com/padariaeconfeitariafreitas?igsh=MTNwcWN4Z3ZjMjBjeg=="
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg text-white"
-                  title="Instagram"
-                >
-                  <FaInstagram size={24} />
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Redes Sociais em destaque no centro */}
-          <div className="border-t border-gray-800 py-8">
-            <div className="text-center mb-6">
-              <p className="text-gray-400 text-sm mb-4">Nos siga nas redes sociais</p>
-              <div className="flex gap-6 justify-center">
-                <a
-                  href="https://wa.me/5527997835980"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-full transition-all duration-200 shadow-md hover:shadow-lg text-white font-medium"
-                  title="WhatsApp"
-                >
-                  <FaWhatsapp size={20} />
+                  <FaWhatsapp size={18} />
                   <span>WhatsApp</span>
                 </a>
                 <a
-                  href="https://www.instagram.com/padariaeconfeitariafreitas?igsh=MTNwcWN4Z3ZjMjBjeg=="
+                  href={INSTAGRAM_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transition-all duration-200 shadow-md hover:shadow-lg text-white font-medium"
-                  title="Instagram"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-full transition-colors duration-200 shadow-md text-white font-medium text-sm"
+                  aria-label="Siga nosso Instagram"
                 >
-                  <FaInstagram size={20} />
+                  <FaInstagram size={18} />
                   <span>Instagram</span>
                 </a>
               </div>
@@ -164,7 +229,7 @@ export function HomeContent() {
 
           <div className="border-t border-gray-800 pt-8 text-center">
             <p className="text-gray-500 text-sm">
-              © 2024 PADARIA Freitas. Todos os direitos reservados.
+              &copy; {currentYear} PADARIA Freitas. Todos os direitos reservados.
             </p>
           </div>
         </div>

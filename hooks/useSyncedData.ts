@@ -5,25 +5,14 @@ import { MenuItem, Category } from "@/lib/validation";
 import { syncFromSupabase } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
-// Helper function to create a debounced refresh
-const createDebouncedRefresh = (fn: () => Promise<void>, delayMs: number) => {
-  let timeoutId: NodeJS.Timeout | null = null;
-  let isScheduled = false;
-
-  return () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    if (!isScheduled) {
-      isScheduled = true;
-      timeoutId = setTimeout(async () => {
-        await fn();
-        isScheduled = false;
-      }, delayMs);
-    }
+interface BroadcastMessage {
+  type: "sync" | "update";
+  data?: {
+    categories?: Category[];
+    products?: MenuItem[];
   };
-};
+  timestamp: number;
+}
 
 export interface SyncedDataState {
   categories: Category[];
@@ -34,23 +23,32 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-// Tipo para mensagens do BroadcastChannel
-interface BroadcastMessage {
-  type: "sync" | "update";
-  data?: {
-    categories?: Category[];
-    products?: MenuItem[];
-  };
-  timestamp: number;
-}
+const POLL_INTERVAL = 30000;
+const DEBOUNCE_DELAY = 1000;
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
   setOptimisticData: (data: { categories?: Category[]; products?: MenuItem[] }) => void;
 } {
+  // Carregar dados do localStorage para inicialização imediata
+  const initialData = typeof window !== "undefined"
+    ? (() => {
+        try {
+          const cat = localStorage.getItem("cardapio-categories");
+          const prod = localStorage.getItem("cardapio-products");
+          return {
+            categories: cat ? JSON.parse(cat) : [],
+            products: prod ? JSON.parse(prod) : []
+          };
+        } catch {
+          return { categories: [], products: [] };
+        }
+      })()
+    : { categories: [], products: [] };
+
   const [state, setState] = useState<SyncedDataState>({
-    categories: [],
-    products: [],
+    categories: initialData.categories,
+    products: initialData.products,
     loading: true,
     error: null,
     lastSync: null,
@@ -58,82 +56,65 @@ export function useSyncedData(): SyncedDataState & {
   });
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedRef = useRef(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
-  // Atualizar localStorage para fallback
   const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[]) => {
     try {
       localStorage.setItem("cardapio-categories", JSON.stringify(categories));
       localStorage.setItem("cardapio-products", JSON.stringify(products));
-    } catch (error) {
-      // Error saving to localStorage - continue without it
+    } catch {
+      // localStorage unavailable
     }
   }, []);
 
-  // Carregar dados do localStorage como fallback
   const loadFromLocalStorage = useCallback((): { categories: Category[]; products: MenuItem[] } => {
     const result = { categories: [] as Category[], products: [] as MenuItem[] };
-
     try {
-      const categoriesStr = localStorage.getItem("cardapio-categories");
-      if (categoriesStr) {
-        try {
-          result.categories = JSON.parse(categoriesStr);
-        } catch {
-          localStorage.removeItem("cardapio-categories");
-        }
-      }
-    } catch (error) {
-      // Ignore localStorage errors
+      const cat = localStorage.getItem("cardapio-categories");
+      if (cat) result.categories = JSON.parse(cat);
+    } catch {
+      localStorage.removeItem("cardapio-categories");
     }
-
     try {
-      const productsStr = localStorage.getItem("cardapio-products");
-      if (productsStr) {
-        try {
-          result.products = JSON.parse(productsStr);
-        } catch {
-          localStorage.removeItem("cardapio-products");
-        }
-      }
-    } catch (error) {
-      // Ignore localStorage errors
+      const prod = localStorage.getItem("cardapio-products");
+      if (prod) result.products = JSON.parse(prod);
+    } catch {
+      localStorage.removeItem("cardapio-products");
     }
-
     return result;
   }, []);
 
-  // Broadcast para outras abas
   const broadcastUpdate = useCallback((categories: Category[], products: MenuItem[]) => {
-    if (broadcastChannelRef.current) {
-      broadcastChannelRef.current.postMessage({
+    try {
+      broadcastChannelRef.current?.postMessage({
         type: "sync",
         data: { categories, products },
         timestamp: Date.now(),
       } as BroadcastMessage);
+    } catch {
+      // BroadcastChannel may be closed
     }
   }, []);
 
-  // Funcao para atualizar dados otimisticamente (sem loading)
   const setOptimisticData = useCallback((data: { categories?: Category[]; products?: MenuItem[] }) => {
     setState((prev) => ({
       ...prev,
-      categories: data.categories !== undefined ? data.categories : prev.categories,
-      products: data.products !== undefined ? data.products : prev.products,
+      categories: data.categories ?? prev.categories,
+      products: data.products ?? prev.products,
     }));
   }, []);
 
-  // Funcao principal para sincronizar
   const refresh = useCallback(async () => {
+    if (!mountedRef.current) return;
+
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const cached = loadFromLocalStorage();
-
-      // Tentar carregar do Supabase
       const data = await syncFromSupabase();
+
+      if (!mountedRef.current) return;
 
       setState((prev) => ({
         ...prev,
@@ -144,42 +125,40 @@ export function useSyncedData(): SyncedDataState & {
         lastSync: new Date(),
       }));
 
-      // Salvar em localStorage para fallback
       saveToLocalStorage(data.categories, data.products);
-
-      // Notificar outras abas
       broadcastUpdate(data.categories, data.products);
     } catch (error) {
-      // Fallback para localStorage
-      const fallback = loadFromLocalStorage();
+      if (!mountedRef.current) return;
 
+      const fallback = loadFromLocalStorage();
       setState((prev) => ({
         ...prev,
-        categories: fallback.categories,
-        products: fallback.products,
+        categories: fallback.categories.length > 0 ? fallback.categories : prev.categories,
+        products: fallback.products.length > 0 ? fallback.products : prev.products,
         loading: false,
         error: `Sincronizacao offline: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         lastSync: new Date(),
       }));
-
-      // Notificar outras abas do fallback
-      broadcastUpdate(fallback.categories, fallback.products);
     }
   }, [saveToLocalStorage, loadFromLocalStorage, broadcastUpdate]);
 
-  // Setup de Realtime e BroadcastChannel
-  useEffect(() => {
-    // Usar flag para evitar múltiplas inicializações
-    if (initializedRef.current) return;
-    initializedRef.current = true;
+  // Debounced refresh for realtime events
+  const debouncedRefresh = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      refresh();
+    }, DEBOUNCE_DELAY);
+  }, [refresh]);
 
-    // Carregar dados iniciais
+  useEffect(() => {
+    mountedRef.current = true;
+
+    // Initial load
     refresh();
 
-    // Debounced refresh para realtime listeners (evita múltiplas sincronizações simultâneas)
-    const debouncedRefresh = createDebouncedRefresh(refresh, 1000);
-
-    // Setup BroadcastChannel para sincronizar entre abas
+    // BroadcastChannel for cross-tab sync
     try {
       broadcastChannelRef.current = new BroadcastChannel("cardapio-sync");
       broadcastChannelRef.current.onmessage = (event: MessageEvent<BroadcastMessage>) => {
@@ -192,64 +171,40 @@ export function useSyncedData(): SyncedDataState & {
           }));
         }
       };
-    } catch (error) {
-      // BroadcastChannel not supported - continue without cross-tab sync
+    } catch {
+      // BroadcastChannel not supported
     }
 
-    // Setup de Realtime do Supabase
-    let channel: any = null;
-    try {
-      channel = supabase
-        .channel("cardapio-realtime")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "categories" },
-          () => {
-            debouncedRefresh();
-          }
-        )
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "menu_items" },
-          () => {
-            debouncedRefresh();
-          }
-        )
-        .on("system", { event: "down" }, () => {
-          setState((prev) => ({ ...prev, realtimeConnected: false }));
-        })
-        .on("system", { event: "up" }, () => {
+    // Supabase Realtime
+    const channel = supabase
+      .channel("cardapio-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        () => debouncedRefresh()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "menu_items" },
+        () => debouncedRefresh()
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
           setState((prev) => ({ ...prev, realtimeConnected: true }));
-        })
-        .subscribe((status) => {
-          if (status === "SUBSCRIBED") {
-            setState((prev) => ({ ...prev, realtimeConnected: true }));
-          }
-        });
-
-      unsubscribeRef.current = () => {
-        if (channel) {
-          channel.unsubscribe();
         }
-      };
-    } catch (error) {
-      setState((prev) => ({ ...prev, realtimeConnected: false }));
-    }
+      });
 
-    // Polling contínuo (a cada 30 segundos) - garante atualização entre aparelhos mesmo sem Realtime
-    pollIntervalRef.current = setInterval(() => {
-      refresh();
-    }, 30000);
+    // Polling for device sync
+    pollIntervalRef.current = setInterval(refresh, POLL_INTERVAL);
 
-    // Cleanup
     return () => {
-      unsubscribeRef.current?.();
+      mountedRef.current = false;
+      channel.unsubscribe();
       broadcastChannelRef.current?.close();
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, []);
+  }, [refresh, debouncedRefresh]);
 
   return {
     ...state,
