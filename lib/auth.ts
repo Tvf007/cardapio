@@ -1,5 +1,4 @@
 import { supabase } from "./supabase";
-import crypto from "crypto";
 
 export interface AuthUser {
   id: string;
@@ -7,17 +6,19 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-// Hash da senha armazenado seguramente no .env (nunca a senha em texto plano!)
 const ADMIN_PASSWORD_HASH = process.env.NEXT_PUBLIC_ADMIN_PASSWORD_HASH;
 
-if (!ADMIN_PASSWORD_HASH) {
-  console.warn("⚠️ NEXT_PUBLIC_ADMIN_PASSWORD_HASH não configurada. Auth desabilitada.");
+// SHA-256 usando Web Crypto API (funciona no browser, sem Node.js crypto)
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Função para comparar senha com hash SHA256
-function verifyPassword(password: string, hash: string): boolean {
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
-    const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+    const passwordHash = await sha256(password);
     return passwordHash === hash;
   } catch (error) {
     console.error("Erro ao verificar senha:", error);
@@ -25,62 +26,39 @@ function verifyPassword(password: string, hash: string): boolean {
   }
 }
 
-// Fazer login com apenas senha
 export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
-    console.log("[AUTH] loginWithPassword chamado");
-    console.log("[AUTH] ADMIN_PASSWORD_HASH definido?", !!ADMIN_PASSWORD_HASH);
-
     if (!ADMIN_PASSWORD_HASH) {
-      console.error("[AUTH] ADMIN_PASSWORD_HASH não configurada!");
       return {
         user: null,
-        error: "Autenticação não configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
+        error: "Autenticacao nao configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
       };
     }
 
-    console.log("[AUTH] Verificando senha...");
-    // Verificar senha de forma segura (comparando hashes, não strings)
-    if (verifyPassword(password, ADMIN_PASSWORD_HASH)) {
-      console.log("[AUTH] ✅ Senha verificada com sucesso!");
+    const isValid = await verifyPassword(password, ADMIN_PASSWORD_HASH);
+    if (isValid) {
       const user: AuthUser = {
         id: "admin-001",
         email: "admin@cardapio.local",
         isAdmin: true,
       };
-      // Salvar no localStorage para manter sessão
       if (typeof window !== "undefined") {
         localStorage.setItem("admin-user", JSON.stringify(user));
       }
-      console.log("✅ Login bem-sucedido");
-      return {
-        user,
-        error: null,
-      };
+      return { user, error: null };
     }
 
-    console.log("[AUTH] ❌ Senha incorreta!");
     return { user: null, error: "Senha incorreta" };
   } catch (error) {
-    console.error("[AUTH] Exceção no loginWithPassword:", error);
     return { user: null, error: error instanceof Error ? error.message : "Erro ao fazer login" };
   }
 }
 
-// Fazer login com email e senha (mantido para compatibilidade)
-export async function loginWithEmail(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
-  return loginWithPassword(password);
-}
-
-// Fazer logout
 export async function logout(): Promise<{ error: string | null }> {
   try {
-    // Limpar session do localStorage
     if (typeof window !== "undefined") {
       localStorage.removeItem("admin-user");
     }
-
-    // Tentar fazer logout no Supabase também
     const { error } = await supabase.auth.signOut();
     return { error: error?.message || null };
   } catch (error) {
@@ -88,7 +66,6 @@ export async function logout(): Promise<{ error: string | null }> {
   }
 }
 
-// Validar se o objeto é um AuthUser válido
 function isValidAuthUser(obj: unknown): obj is AuthUser {
   return (
     typeof obj === "object" &&
@@ -102,10 +79,10 @@ function isValidAuthUser(obj: unknown): obj is AuthUser {
   );
 }
 
-// Obter usuário atualmente logado
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    // Verificar se existe usuário no localStorage (session simples)
+    if (typeof window === "undefined") return null;
+
     const savedUser = localStorage.getItem("admin-user");
     if (savedUser) {
       try {
@@ -113,14 +90,12 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         if (isValidAuthUser(parsedUser)) {
           return parsedUser;
         }
-        // Se inválido, remover do localStorage
         localStorage.removeItem("admin-user");
       } catch {
         localStorage.removeItem("admin-user");
       }
     }
 
-    // Tentar obter do Supabase
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       return null;
@@ -131,26 +106,21 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       email: data.user.email || "",
       isAdmin: true,
     };
-  } catch (error) {
-    console.error("Erro ao obter usuário:", error);
+  } catch {
     return null;
   }
 }
 
-// Registrar novo admin (apenas para criação de contas iniciais)
 export async function signUpAdmin(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       return { user: null, error: error.message };
     }
 
     if (!data.user) {
-      return { user: null, error: "Erro ao criar usuário" };
+      return { user: null, error: "Erro ao criar usuario" };
     }
 
     return {

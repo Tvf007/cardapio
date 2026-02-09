@@ -51,9 +51,13 @@ export async function GET() {
     const categories = categoriesResult.data || [];
     const products = productsResult.data || [];
 
-    // Filtrar categorias inválidas e normalizar produtos
+    // Filtrar categorias invalidas e normalizar produtos
     const validCategories = filterValidCategories(categories);
-    const normalizedProducts = products.map((p: Record<string, unknown>) => ({
+    // Excluir itens do sistema (logo etc) que comecam com __
+    const realProducts = products.filter(
+      (p: Record<string, unknown>) => !String(p.id || "").startsWith("__")
+    );
+    const normalizedProducts = realProducts.map((p: Record<string, unknown>) => ({
       ...p,
       price: normalizePrice(p.price),
       available: normalizeAvailable(p.available),

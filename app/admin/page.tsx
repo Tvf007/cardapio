@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "categorias" | "produtos">("dashboard");
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const cardapio = useCardapio();
@@ -32,34 +33,39 @@ export default function AdminPage() {
       setLoading(false);
     };
 
-    const savedLogo = localStorage.getItem("padaria-logo");
-    if (savedLogo) {
-      setLogo(savedLogo);
-    }
+    // Carregar logo do servidor
+    fetch("/api/logo")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.logo) {
+          setLogo(data.logo);
+          localStorage.setItem("padaria-logo", data.logo);
+        }
+      })
+      .catch(() => {
+        // Fallback para localStorage
+        const savedLogo = localStorage.getItem("padaria-logo");
+        if (savedLogo) setLogo(savedLogo);
+      });
 
     loadUser();
   }, []);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (_email: string, password: string) => {
     try {
       setLoading(true);
-      console.log("[DEBUG] handleLogin chamado com senha:", password);
       const result = await loginWithPassword(password);
-      console.log("[DEBUG] Resultado do login:", result);
 
       if (result.error) {
-        console.error("[DEBUG] Erro de login:", result.error);
         toast.error(result.error);
         return;
       }
 
       if (result.user) {
-        console.log("[DEBUG] Login bem-sucedido para usuário:", result.user);
         setUser(result.user);
         toast.success("Login realizado com sucesso!");
       }
     } catch (error) {
-      console.error("[DEBUG] Exceção no login:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao fazer login");
     } finally {
       setLoading(false);
@@ -82,11 +88,22 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const result = reader.result as string;
         setLogo(result);
         localStorage.setItem("padaria-logo", result);
-        toast.success("Logo atualizado com sucesso!");
+
+        // Salvar no servidor para sincronizar com outros dispositivos
+        try {
+          await fetch("/api/logo", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ logo: result }),
+          });
+          toast.success("Logo atualizado com sucesso!");
+        } catch {
+          toast.success("Logo salvo localmente (erro ao sincronizar)");
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -379,7 +396,7 @@ export default function AdminPage() {
                     type="text"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyPress={(e) => {
+                    onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleAddCategory();
                       }
@@ -464,63 +481,107 @@ export default function AdminPage() {
         )}
 
         {/* Produtos Tab */}
-        {activeTab === "produtos" && (
-          <div className="space-y-6">
-            {/* Add Product Form */}
-            {showProductForm && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {editingProduct ? "Editar Produto" : "Novo Produto"}
-                </h2>
-                <ProductForm
-                  onSubmit={handleSaveProduct}
-                  onCancel={() => {
-                    setShowProductForm(false);
-                    setEditingProduct(null);
-                  }}
-                  product={editingProduct || undefined}
-                  categories={cardapio.categories}
-                />
-              </div>
-            )}
+        {activeTab === "produtos" && (() => {
+          const filteredProducts = filterCategory
+            ? cardapio.products.filter((p) => p.category === filterCategory)
+            : cardapio.products;
 
-            {/* Products Button */}
-            {!showProductForm && (
-              <div className="flex justify-center sticky bottom-4 z-40">
-                <RippleButton
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setShowProductForm(true);
-                  }}
-                  className="bg-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl text-base sm:text-lg flex items-center gap-2"
-                >
-                  <span className="text-xl">+</span>
-                  <span>Novo Produto</span>
-                </RippleButton>
-              </div>
-            )}
-
-            {/* Products List */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              {cardapio.products.length === 0 ? (
-                <div className="px-8 py-12 text-center">
-                  <p className="text-gray-500 text-lg">Nenhum produto cadastrado ainda</p>
-                  <p className="text-gray-400 text-sm mt-2">Clique em "+ Novo Produto" para começar</p>
+          return (
+            <div className="space-y-6">
+              {/* Add Product Form */}
+              {showProductForm && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-8">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
+                    {editingProduct ? "Editar Produto" : "Novo Produto"}
+                  </h2>
+                  <ProductForm
+                    onSubmit={handleSaveProduct}
+                    onCancel={() => {
+                      setShowProductForm(false);
+                      setEditingProduct(null);
+                    }}
+                    product={editingProduct || undefined}
+                    categories={cardapio.categories}
+                  />
                 </div>
-              ) : (
-                <AdminProductList
-                  products={cardapio.products}
-                  categories={cardapio.categories}
-                  onEdit={(product) => {
-                    setEditingProduct(product);
-                    setShowProductForm(true);
-                  }}
-                  onDelete={handleDeleteProduct}
-                />
               )}
+
+              {/* Novo Produto Button + Filtro por Categoria */}
+              {!showProductForm && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {/* Filtro por Categoria */}
+                  <div className="flex gap-2 overflow-x-auto pb-2 w-full sm:w-auto scrollbar-hide">
+                    <button
+                      onClick={() => setFilterCategory(null)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                        filterCategory === null
+                          ? "bg-[#7c4e42] text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      Todas ({cardapio.products.length})
+                    </button>
+                    {cardapio.categories.map((cat) => {
+                      const count = cardapio.products.filter((p) => p.category === cat.id).length;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setFilterCategory(cat.id)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                            filterCategory === cat.id
+                              ? "bg-[#7c4e42] text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {cat.name} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <RippleButton
+                    onClick={() => {
+                      setEditingProduct(null);
+                      setShowProductForm(true);
+                    }}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+                  >
+                    <span className="text-lg">+</span>
+                    <span>Novo Produto</span>
+                  </RippleButton>
+                </div>
+              )}
+
+              {/* Products List */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                {filteredProducts.length === 0 ? (
+                  <div className="px-8 py-12 text-center">
+                    <p className="text-gray-500 text-lg">
+                      {filterCategory
+                        ? "Nenhum produto nesta categoria"
+                        : "Nenhum produto cadastrado ainda"}
+                    </p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      {filterCategory
+                        ? "Selecione outra categoria ou adicione um produto"
+                        : 'Clique em "+ Novo Produto" para comecar'}
+                    </p>
+                  </div>
+                ) : (
+                  <AdminProductList
+                    products={filteredProducts}
+                    categories={cardapio.categories}
+                    onEdit={(product) => {
+                      setEditingProduct(product);
+                      setShowProductForm(true);
+                    }}
+                    onDelete={handleDeleteProduct}
+                  />
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
     </div>
   );

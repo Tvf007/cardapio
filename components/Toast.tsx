@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -8,7 +8,7 @@ interface ToastMessage {
   id: string;
   message: string;
   type: ToastType;
-  duration?: number;
+  duration: number;
 }
 
 let toastId = 0;
@@ -35,51 +35,58 @@ export function useToast() {
 
 export function ToastProvider() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const timersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     const handleToast = (toast: ToastMessage) => {
       setToasts(prev => [...prev, toast]);
 
-      if (toast.duration) {
+      if (toast.duration > 0) {
         const timeout = setTimeout(() => {
           setToasts(prev => prev.filter(t => t.id !== toast.id));
+          timersRef.current.delete(toast.id);
         }, toast.duration);
 
-        return () => clearTimeout(timeout);
+        timersRef.current.set(toast.id, timeout);
       }
     };
 
     listeners.add(handleToast);
     return () => {
       listeners.delete(handleToast);
+      // Clean up all timers on unmount
+      timersRef.current.forEach(timer => clearTimeout(timer));
+      timersRef.current.clear();
     };
   }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
+    const timer = timersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
+  }, []);
+
+  if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-container">
+    <div className="toast-container" aria-live="polite">
       {toasts.map(toast => (
         <div
           key={toast.id}
           className={`toast ${toast.type}`}
           role="alert"
-          onAnimationEnd={() => {
-            if (toast.duration) {
-              removeToast(toast.id);
-            }
-          }}
         >
           <div className="flex items-center justify-between gap-3">
             <span>{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
-              className="ml-4 text-white opacity-70 hover:opacity-100 transition-opacity"
-              aria-label="Close notification"
+              className="ml-2 text-white opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
+              aria-label="Fechar notificacao"
             >
-              ✕
+              X
             </button>
           </div>
         </div>

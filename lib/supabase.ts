@@ -5,28 +5,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    "Variáveis de ambiente Supabase não configuradas. " +
+    "Variaveis de ambiente Supabase nao configuradas. " +
     "Defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY"
   );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Tipos para o banco
-export interface Category {
-  id: string;
-  name: string;
-  created_at?: string;
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  image: string;
-  available: boolean;
-  created_at?: string;
-  updated_at?: string;
-}

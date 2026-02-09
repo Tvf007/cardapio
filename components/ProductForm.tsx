@@ -1,7 +1,7 @@
 "use client";
 
 import { MenuItem } from "@/lib/validation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { v4 as uuid } from "uuid";
 import { RippleButton } from "./RippleButton";
 import { useCardapio } from "@/contexts/CardapioContext";
@@ -31,7 +31,7 @@ export function ProductForm({
       name: "",
       description: "",
       price: 0,
-      category: categories[0]?.id || "1",
+      category: categories[0]?.id || "",
       available: true,
       image: "",
     }
@@ -43,68 +43,62 @@ export function ProductForm({
 
   const isLoading = externalLoading || isSubmitting;
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validar tamanho máximo de 2MB (limite reduzido para mobile)
-      const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-      if (file.size > MAX_FILE_SIZE) {
-        alert("Imagem muito grande! Máximo permitido é 2MB");
-        return;
-      }
+    if (!file) return;
 
-      // Validar tipo de arquivo
-      if (!file.type.startsWith("image/")) {
-        alert("Por favor, selecione um arquivo de imagem válido");
-        return;
-      }
-
-      // Comprimir imagem antes de converter para base64
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-
-      img.onload = () => {
-        // Definir dimensões máximas (800x600)
-        const maxWidth = 800;
-        const maxHeight = 600;
-        let { width, height } = img;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        // Converter com qualidade 0.7 para reduzir tamanho
-        const result = canvas.toDataURL("image/jpeg", 0.7);
-        setImagePreview(result);
-        setFormData({ ...formData, image: result });
-      };
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        img.src = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+    const MAX_FILE_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("Imagem muito grande! Maximo permitido e 2MB");
+      return;
     }
-  };
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione um arquivo de imagem valido");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    img.onload = () => {
+      const maxWidth = 800;
+      const maxHeight = 600;
+      let { width, height } = img;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx?.drawImage(img, 0, 0, width, height);
+
+      const result = canvas.toDataURL("image/jpeg", 0.7);
+      setImagePreview(result);
+      setFormData((prev) => ({ ...prev, image: result }));
+    };
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validacao basica no frontend
     if (!formData.name.trim()) {
       setError("Nome do produto e obrigatorio");
       return;
@@ -120,7 +114,6 @@ export function ProductForm({
       return;
     }
 
-    // Check for duplicate product name in the same category
     const duplicateProduct = cardapio.products.find(
       (p) =>
         p.category === formData.category &&
@@ -129,7 +122,7 @@ export function ProductForm({
     );
 
     if (duplicateProduct) {
-      toast.error("Produto com este nome já existe nesta categoria!");
+      toast.error("Produto com este nome ja existe nesta categoria!");
       return;
     }
 
@@ -150,26 +143,19 @@ export function ProductForm({
         {product ? "Editar Produto" : "Novo Produto"}
       </h2>
 
-      {/* Error Message */}
       {error && (
         <div className="mb-3 sm:mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
           <p className="text-red-700 text-xs sm:text-sm font-medium">{error}</p>
         </div>
       )}
 
-      {/* Image Preview and Upload */}
+      {/* Image Upload */}
       <div className="mb-4 sm:mb-6">
         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
           Foto do Produto
         </label>
         <label className="cursor-pointer block">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center transition-all duration-300" style={{ '--hover-border': '#7c4e42' } as any} onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#7c4e42';
-            e.currentTarget.style.backgroundColor = '#f5eee5';
-          }} onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#d1d5db';
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center hover:border-[#7c4e42] hover:bg-amber-50/50 transition-colors">
             {imagePreview ? (
               <div className="relative inline-block w-full">
                 <img
@@ -181,16 +167,16 @@ export function ProductForm({
                   type="button"
                   onClick={() => {
                     setImagePreview("");
-                    setFormData({ ...formData, image: "" });
+                    setFormData((prev) => ({ ...prev, image: "" }));
                   }}
-                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center transition-colors text-xs sm:text-sm"
+                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm"
                 >
-                  ✕
+                  X
                 </RippleButton>
               </div>
             ) : (
               <div className="py-4 sm:py-6">
-                <p className="text-2xl sm:text-3xl mb-2">📸</p>
+                <p className="text-2xl sm:text-3xl mb-2">&#128248;</p>
                 <p className="text-gray-700 text-xs sm:text-sm font-medium">Clique para adicionar uma foto</p>
               </div>
             )}
@@ -214,44 +200,25 @@ export function ProductForm({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Ex: Frango à Parmegiana"
-            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
-            onFocus={(e) => {
-              e.target.style.borderColor = '#7c4e42';
-              e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-              e.target.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-              e.target.style.boxShadow = 'none';
-              e.target.style.animation = 'none';
-            }}
+            placeholder="Ex: Frango a Parmegiana"
+            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
           />
         </div>
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-            Preço (R$)
+            Preco (R$)
           </label>
           <input
             type="number"
             step="0.01"
+            min="0"
             value={formData.price || ""}
             onChange={(e) =>
               setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : 0 })
             }
             placeholder="0,00"
-            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
-            onFocus={(e) => {
-              e.target.style.borderColor = '#7c4e42';
-              e.target.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-              e.target.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#d1d5db';
-              e.target.style.boxShadow = 'none';
-              e.target.style.animation = 'none';
-            }}
+            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
           />
         </div>
       </div>
@@ -267,17 +234,7 @@ export function ProductForm({
             onChange={(e) =>
               setFormData({ ...formData, category: e.target.value })
             }
-            className="w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-xs sm:text-sm bg-white text-gray-900 focus:outline-none"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#7c4e42';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-              e.currentTarget.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.animation = 'none';
-            }}
+            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 transition-all"
           >
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
@@ -288,7 +245,7 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
             Disponibilidade
           </label>
           <select
@@ -296,28 +253,18 @@ export function ProductForm({
             onChange={(e) =>
               setFormData({ ...formData, available: e.target.value === "true" })
             }
-            className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 text-sm bg-white text-gray-900 focus:outline-none"
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#7c4e42';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-              e.currentTarget.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.animation = 'none';
-            }}
+            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 transition-all"
           >
-            <option value="true">Disponível</option>
-            <option value="false">Indisponível</option>
+            <option value="true">Disponivel</option>
+            <option value="false">Indisponivel</option>
           </select>
         </div>
       </div>
 
       {/* Description */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Descrição
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
+          Descricao
         </label>
         <textarea
           value={formData.description}
@@ -325,18 +272,8 @@ export function ProductForm({
             setFormData({ ...formData, description: e.target.value })
           }
           placeholder="Descreva o produto aqui..."
-          className="w-full px-3.5 py-2.5 border border-gray-300 rounded-md transition-all duration-200 resize-none text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none"
+          className="form-input w-full px-3.5 py-2.5 border border-gray-300 rounded-md resize-none text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
           rows={3}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = '#7c4e42';
-            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 78, 66, 0.15)';
-            e.currentTarget.style.animation = 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = '#d1d5db';
-            e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.animation = 'none';
-          }}
         />
       </div>
 
@@ -345,25 +282,7 @@ export function ProductForm({
         <RippleButton
           type="submit"
           disabled={isLoading}
-          className={`flex-1 text-white py-2.5 rounded-md font-medium transition-all duration-200 text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-          style={{
-            backgroundColor: isLoading ? '#9a7a70' : '#7c4e42',
-            boxShadow: '0 4px 12px rgba(124, 78, 66, 0.2)'
-          }}
-          onMouseEnter={(e) => {
-            if (!isLoading) {
-              e.currentTarget.style.backgroundColor = '#5a3a2f';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(124, 78, 66, 0.3)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isLoading) {
-              e.currentTarget.style.backgroundColor = '#7c4e42';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 78, 66, 0.2)';
-            }
-          }}
+          className={`btn-primary flex-1 text-white py-2.5 rounded-md font-medium text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
@@ -378,7 +297,7 @@ export function ProductForm({
           type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className={`flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-md font-medium transition-colors duration-200 text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-md font-medium text-sm transition-colors ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           Cancelar
         </RippleButton>

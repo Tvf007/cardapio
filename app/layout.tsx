@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/Toast";
@@ -15,8 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cardápio - Caixa Freitas",
-  description: "Cardápio digital do Caixa Freitas",
+  title: "Cardapio - Padaria Freitas",
+  description: "Cardapio digital da Padaria e Confeitaria Freitas",
+  icons: { icon: "/favicon.ico" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#7c4e42",
 };
 
 export default function RootLayout({
@@ -25,12 +32,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ToastProvider />
         <CardapioProvider>
+          <ToastProvider />
           {children}
         </CardapioProvider>
       </body>

@@ -33,6 +33,8 @@ export function RippleButton({
   }>>([]);
 
   const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    
     const button = e.currentTarget;
     const rect = button.getBoundingClientRect();
     const size = Math.max(rect.width, rect.height);
@@ -42,7 +44,6 @@ export function RippleButton({
     const newRipple = { x, y, size, id: Date.now() };
     setRipples((prev) => [...prev, newRipple]);
 
-    // Remove ripple após animação
     setTimeout(() => {
       setRipples((prev) => prev.filter((r) => r.id !== newRipple.id));
     }, 600);
@@ -62,8 +63,6 @@ export function RippleButton({
       title={title}
     >
       {children}
-
-      {/* Ripples */}
       {ripples.map((ripple) => (
         <span
           key={ripple.id}
@@ -73,21 +72,12 @@ export function RippleButton({
             top: ripple.y,
             width: ripple.size,
             height: ripple.size,
-            backgroundColor: 'rgba(255, 255, 255, 0.6)',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
             transform: 'scale(0)',
-            animation: `ripple 600ms ease-out forwards`,
+            animation: 'ripple 600ms ease-out forwards',
           }}
         />
       ))}
-
-      <style>{`
-        @keyframes ripple {
-          to {
-            transform: scale(4);
-            opacity: 0;
-          }
-        }
-      `}</style>
     </button>
   );
 }

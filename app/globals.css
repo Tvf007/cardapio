@@ -1,20 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
   --background: #fafbfc;
   --foreground: #1f2937;
-  --primary: #8b7355;
-  --primary-dark: #6b5344;
+  --primary: #7c4e42;
+  --primary-dark: #5a3a2f;
   --primary-light: #d4a574;
   --secondary: #374151;
-  --secondary-light: #6b7280;
-  --accent: #a78bfa;
-  --accent-light: #c4b5fd;
   --success: #10b981;
   --border: #e5e7eb;
-  --text-light: #6b7280;
-  --text-muted: #9ca3af;
 }
 
 @theme inline {
@@ -22,15 +16,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f1419;
-    --foreground: #ffffff;
-    --border: #1e2a3a;
-    --text-light: #b0bec5;
-  }
 }
 
 * {
@@ -46,47 +31,98 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Playfair Display', serif;
-  font-weight: 600;
-  letter-spacing: -0.5px;
+/* Header gradient */
+.header-gradient {
+  background: linear-gradient(to right, #7c4e42, #5a3a2f);
+  border-color: #4a2e24;
 }
 
-.font-heading {
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.3px;
+/* Menu item card hover */
+.menu-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+.menu-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(124, 78, 66, 0.15);
 }
 
-@keyframes slideInFromLeft {
+.menu-card-image {
+  transition: transform 0.5s ease;
+}
+
+.menu-card:hover .menu-card-image {
+  transform: scale(1.05);
+}
+
+/* Category filter buttons */
+.category-btn {
+  transition: all 0.2s ease;
+}
+
+.category-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(124, 78, 66, 0.2);
+}
+
+.category-btn.active:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 20px rgba(124, 78, 66, 0.3);
+}
+
+/* Form input focus */
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 78, 66, 0.15);
+  outline: none;
+}
+
+/* Primary button hover */
+.btn-primary {
+  background-color: var(--primary);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 78, 66, 0.3);
+}
+
+/* Staggered animation for grid items */
+.animate-stagger > * {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-stagger > :nth-child(1) { animation-delay: 0.05s; }
+.animate-stagger > :nth-child(2) { animation-delay: 0.1s; }
+.animate-stagger > :nth-child(3) { animation-delay: 0.15s; }
+.animate-stagger > :nth-child(4) { animation-delay: 0.2s; }
+.animate-stagger > :nth-child(5) { animation-delay: 0.25s; }
+.animate-stagger > :nth-child(6) { animation-delay: 0.3s; }
+.animate-stagger > :nth-child(n+7) { animation-delay: 0.35s; }
+
+@keyframes fadeInUp {
   from {
-    transform: translateX(-10px);
     opacity: 0;
+    transform: translateY(16px);
   }
   to {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes slideInFromRight {
   from {
-    transform: translateX(10px);
+    transform: translateX(100%);
     opacity: 0;
   }
   to {
@@ -95,172 +131,82 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-@keyframes smoothGlow {
-  0%, 100% {
-    box-shadow: 0 0 0 3px rgba(124, 78, 66, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(124, 78, 66, 0.25);
-  }
-}
-
-/* PHASE 1: Modern Entry Animations */
-@keyframes fadeIn {
+@keyframes slideOutToRight {
   from {
-    opacity: 0;
-  }
-  to {
+    transform: translateX(0);
     opacity: 1;
   }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
   to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInDown {
-  from {
+    transform: translateX(100%);
     opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
-@keyframes scaleIn {
-  from {
+/* Ripple animation */
+@keyframes ripple {
+  to {
+    transform: scale(4);
     opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
-/* Staggered animation utility for child elements */
-.animate-stagger > * {
-  animation: fadeInUp 0.6s ease-out forwards;
-}
-
-.animate-stagger > :nth-child(1) { animation-delay: 0.1s; }
-.animate-stagger > :nth-child(2) { animation-delay: 0.2s; }
-.animate-stagger > :nth-child(3) { animation-delay: 0.3s; }
-.animate-stagger > :nth-child(4) { animation-delay: 0.4s; }
-.animate-stagger > :nth-child(5) { animation-delay: 0.5s; }
-.animate-stagger > :nth-child(6) { animation-delay: 0.6s; }
-.animate-stagger > :nth-child(7) { animation-delay: 0.7s; }
-.animate-stagger > :nth-child(8) { animation-delay: 0.8s; }
-.animate-stagger > :nth-child(n+9) { animation-delay: 0.9s; }
-
-/* Fluid Typography - responsive sizing with clamp() */
-.text-fluid-lg {
-  font-size: clamp(1.875rem, 5vw, 2.25rem);
-  line-height: clamp(2.25rem, 6vw, 2.75rem);
-}
-
-.text-fluid-base {
-  font-size: clamp(1rem, 2vw, 1.125rem);
-  line-height: clamp(1.5rem, 2.5vw, 1.75rem);
-}
-
-.text-fluid-sm {
-  font-size: clamp(0.875rem, 1.5vw, 1rem);
-  line-height: clamp(1.25rem, 2vw, 1.5rem);
-}
-
-/* GPU Acceleration for interactive elements */
-.gpu-accelerate {
-  transform: translateZ(0);
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-  -webkit-font-smoothing: subpixel-antialiased;
-}
-
-.gpu-accelerate-on-hover:hover {
-  transform: translateZ(0);
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
-
-/* Smooth transitions with GPU acceleration */
-.transition-gpu {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, opacity;
-}
-
-/* Skeleton Loading Base Styles */
+/* Skeleton loading */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 0%,
-    #e0e0e0 50%,
-    #f0f0f0 100%
-  );
+  background: linear-gradient(90deg, #f0f0f0 0%, #e0e0e0 50%, #f0f0f0 100%);
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
 }
 
 @keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Toast notification styles */
 .toast-container {
   position: fixed;
-  top: 1.5rem;
-  right: 1.5rem;
+  top: 1rem;
+  right: 1rem;
   z-index: 9999;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 400px;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    left: 1rem;
+    right: 1rem;
+    max-width: none;
+  }
 }
 
 .toast {
   pointer-events: auto;
-  min-width: 300px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 0.75rem;
+  padding: 0.875rem 1.25rem;
   border-radius: 0.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   animation: slideInFromRight 0.3s ease-out;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.toast.success {
-  background-color: #10b981;
-  color: white;
+.toast.success { background-color: #10b981; color: white; }
+.toast.error { background-color: #ef4444; color: white; }
+.toast.warning { background-color: #f59e0b; color: white; }
+.toast.info { background-color: #3b82f6; color: white; }
+
+.toast.removing {
+  animation: slideOutToRight 0.3s ease-in forwards;
 }
 
-.toast.error {
-  background-color: #ef4444;
-  color: white;
+/* Scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
-.toast.warning {
-  background-color: #f59e0b;
-  color: white;
-}
-
-.toast.info {
-  background-color: #3b82f6;
-  color: white;
-}
-
-@keyframes slideOutToRight {
-  to {
-    opacity: 0;
-    transform: translateX(100px);
-  }
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

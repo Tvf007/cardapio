@@ -30,25 +30,10 @@ export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
   setOptimisticData: (data: { categories?: Category[]; products?: MenuItem[] }) => void;
 } {
-  // Carregar dados do localStorage para inicialização imediata
-  const initialData = typeof window !== "undefined"
-    ? (() => {
-        try {
-          const cat = localStorage.getItem("cardapio-categories");
-          const prod = localStorage.getItem("cardapio-products");
-          return {
-            categories: cat ? JSON.parse(cat) : [],
-            products: prod ? JSON.parse(prod) : []
-          };
-        } catch {
-          return { categories: [], products: [] };
-        }
-      })()
-    : { categories: [], products: [] };
-
+  // Iniciar VAZIO - sem cache do localStorage para evitar flash de dados desatualizados
   const [state, setState] = useState<SyncedDataState>({
-    categories: initialData.categories,
-    products: initialData.products,
+    categories: [],
+    products: [],
     loading: true,
     error: null,
     lastSync: null,
@@ -109,8 +94,6 @@ export function useSyncedData(): SyncedDataState & {
   const refresh = useCallback(async () => {
     if (!mountedRef.current) return;
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-
     try {
       const data = await syncFromSupabase();
 
@@ -130,19 +113,19 @@ export function useSyncedData(): SyncedDataState & {
     } catch (error) {
       if (!mountedRef.current) return;
 
+      // Somente usar localStorage como fallback se nao tem dados ainda
       const fallback = loadFromLocalStorage();
       setState((prev) => ({
         ...prev,
-        categories: fallback.categories.length > 0 ? fallback.categories : prev.categories,
-        products: fallback.products.length > 0 ? fallback.products : prev.products,
+        categories: prev.categories.length > 0 ? prev.categories : fallback.categories,
+        products: prev.products.length > 0 ? prev.products : fallback.products,
         loading: false,
-        error: `Sincronizacao offline: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+        error: `Erro de conexao: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         lastSync: new Date(),
       }));
     }
   }, [saveToLocalStorage, loadFromLocalStorage, broadcastUpdate]);
 
-  // Debounced refresh for realtime events
   const debouncedRefresh = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -155,10 +138,10 @@ export function useSyncedData(): SyncedDataState & {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Initial load
+    // Carregar dados do Supabase imediatamente
     refresh();
 
-    // BroadcastChannel for cross-tab sync
+    // BroadcastChannel para sync entre abas
     try {
       broadcastChannelRef.current = new BroadcastChannel("cardapio-sync");
       broadcastChannelRef.current.onmessage = (event: MessageEvent<BroadcastMessage>) => {
@@ -194,7 +177,7 @@ export function useSyncedData(): SyncedDataState & {
         }
       });
 
-    // Polling for device sync
+    // Polling a cada 30s
     pollIntervalRef.current = setInterval(refresh, POLL_INTERVAL);
 
     return () => {
