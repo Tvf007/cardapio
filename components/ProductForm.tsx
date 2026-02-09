@@ -47,12 +47,6 @@ export function ProductForm({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const MAX_FILE_SIZE = 2 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("Imagem muito grande! Maximo permitido e 2MB");
-      return;
-    }
-
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione um arquivo de imagem valido");
       return;
@@ -83,7 +77,7 @@ export function ProductForm({
       canvas.height = height;
       ctx?.drawImage(img, 0, 0, width, height);
 
-      const result = canvas.toDataURL("image/jpeg", 0.7);
+      const result = canvas.toDataURL("image/jpeg", 0.8);
       setImagePreview(result);
       setFormData((prev) => ({ ...prev, image: result }));
     };

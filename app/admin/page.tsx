@@ -576,6 +576,7 @@ export default function AdminPage() {
                       setShowProductForm(true);
                     }}
                     onDelete={handleDeleteProduct}
+                    onSave={handleSaveProduct}
                   />
                 )}
               </div>
