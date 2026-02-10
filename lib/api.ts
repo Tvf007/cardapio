@@ -168,7 +168,7 @@ interface CacheEntry<T> {
 
 class LocalCache {
   private cache: Map<string, CacheEntry<unknown>> = new Map();
-  private readonly defaultTTL = 60000; // 60 segundos (aumentado de 30s para logo sincronizar melhor)
+  private readonly defaultTTL = 5000; // 5 segundos (reduzido de 60s para sincronização RÁPIDA de logo entre devices)
 
   set<T>(key: string, data: T, ttl?: number): void {
     const now = Date.now();
