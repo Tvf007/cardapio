@@ -91,7 +91,7 @@ export function useSyncedData(): SyncedDataState & {
     }));
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (retryCount = 0, maxRetries = 2) => {
     if (!mountedRef.current) return;
 
     try {
@@ -113,16 +113,32 @@ export function useSyncedData(): SyncedDataState & {
     } catch (error) {
       if (!mountedRef.current) return;
 
+      // Retry automático com backoff exponencial
+      if (retryCount < maxRetries) {
+        const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s...
+        console.warn(
+          `[useSyncedData] Sincronização falhou. Tentando novamente em ${delayMs}ms... (tentativa ${retryCount + 1}/${maxRetries})`
+        );
+        setTimeout(() => {
+          refresh(retryCount + 1, maxRetries);
+        }, delayMs);
+        return;
+      }
+
       // Somente usar localStorage como fallback se nao tem dados ainda
       const fallback = loadFromLocalStorage();
+      const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
+
       setState((prev) => ({
         ...prev,
         categories: prev.categories.length > 0 ? prev.categories : fallback.categories,
         products: prev.products.length > 0 ? prev.products : fallback.products,
         loading: false,
-        error: `Erro de conexao: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+        error: `Erro ao sincronizar (tentativas exauridas): ${errorMsg}`,
         lastSync: new Date(),
       }));
+
+      console.error("[useSyncedData] Erro após múltiplas tentativas:", error);
     }
   }, [saveToLocalStorage, loadFromLocalStorage, broadcastUpdate]);
 

@@ -107,6 +107,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validar tamanho das imagens para evitar falhas de sincronização
+    const maxImageSizeKB = 500;
+    for (const product of products) {
+      const prod = product as Record<string, unknown>;
+      if (prod.image && typeof prod.image === "string") {
+        const imageSizeKB = (prod.image.length * 3) / 4 / 1024;
+        if (imageSizeKB > maxImageSizeKB) {
+          return NextResponse.json(
+            {
+              error: `Imagem do produto "${prod.name || prod.id}" muito grande (${imageSizeKB.toFixed(0)}KB). Máximo: ${maxImageSizeKB}KB. Tente comprimir a imagem.`
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Filtrar categorias inválidas
     const validCategories = filterValidCategories(categories);
 
@@ -193,7 +210,10 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase
         .from("menu_items")
         .upsert(products, { onConflict: "id" });
-      if (error) throw error;
+      if (error) {
+        console.error("[SYNC] Erro ao fazer upsert de products:", error);
+        throw error;
+      }
     }
 
     return NextResponse.json({
@@ -207,7 +227,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);
-    console.error("[SYNC POST] Erro:", errorMessage);
+    console.error("[SYNC POST] Erro completo:", {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : "N/A",
+      timestamp: new Date().toISOString()
+    });
     return NextResponse.json(
       { error: "Erro ao sincronizar dados", details: errorMessage },
       { status: 500 }

@@ -47,7 +47,7 @@ export function MenuItem({ item, categories }: MenuItemProps) {
           <img
             src={item.image}
             alt={item.name}
-            className="menu-card-image w-full h-full object-contain bg-white"
+            className="menu-card-image w-full h-full object-cover bg-white"
             loading="lazy"
           />
         ) : (
