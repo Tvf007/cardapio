@@ -111,6 +111,19 @@ export function useSyncedData(): SyncedDataState & {
         return true;
       });
 
+      // CRITICAL FIX: Fallback to localStorage if logo is null or missing from Supabase
+      if (!logo) {
+        try {
+          const fallbackLogo = localStorage.getItem("padaria-logo");
+          if (fallbackLogo) {
+            logo = fallbackLogo;
+            console.info("[useSyncedData] Using fallback logo from localStorage");
+          }
+        } catch {
+          // localStorage unavailable
+        }
+      }
+
       setState((prev) => ({
         ...prev,
         categories: data.categories,

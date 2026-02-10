@@ -80,14 +80,27 @@ export default function AdminPage() {
 
         // Salvar no servidor para sincronizar com outros dispositivos
         try {
-          await fetch("/api/logo", {
+          const response = await fetch("/api/logo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ logo: result }),
           });
+
+          // CRITICAL FIX: Verify HTTP response before showing success
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.details || errorData.error || `HTTP ${response.status}`;
+            console.error("[Logo Upload] Server error:", errorMsg);
+            toast.error(`Erro ao sincronizar logo: ${errorMsg}`);
+            return;
+          }
+
+          console.info("[Logo Upload] Successfully synced to server");
           toast.success("Logo atualizado com sucesso!");
-        } catch {
-          toast.success("Logo salvo localmente (erro ao sincronizar)");
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
+          console.error("[Logo Upload] Network error:", errorMsg);
+          toast.error(`Erro ao sincronizar logo: ${errorMsg}. Salvo localmente.`);
         }
       };
       reader.readAsDataURL(file);

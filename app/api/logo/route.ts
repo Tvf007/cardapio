@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { localCache } from "@/lib/api";
 
 const LOGO_ID = "__site_logo__";
 
@@ -31,6 +32,8 @@ export async function POST(request: NextRequest) {
     if (!logo) {
       // Deletar logo
       await supabase.from("menu_items").delete().eq("id", LOGO_ID);
+      // CRITICAL FIX: Invalidate cache when logo is deleted
+      localCache.invalidate("sync_data");
       return NextResponse.json({ success: true, message: "Logo removida" });
     }
 
@@ -54,6 +57,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // CRITICAL FIX: Invalidate cache when logo is successfully updated
+    // This ensures all devices get fresh data within 10 seconds (polling interval)
+    localCache.invalidate("sync_data");
 
     return NextResponse.json({ success: true, message: "Logo salva com sucesso" });
   } catch (error) {
