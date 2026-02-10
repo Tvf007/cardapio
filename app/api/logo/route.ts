@@ -56,16 +56,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: "Logo removida" });
     }
 
-    // Salvar logo como item especial (nao aparece no cardapio pois a category é NULL)
-    // FIX: Usar NULL para category para evitar foreign key constraint violation
-    console.info("[API /logo POST] Fazendo upsert de logo em Supabase");
+    // Salvar logo como item especial com categoria especial __hidden__
+    // FIX: category não pode ser NULL (violaria NOT NULL constraint)
+    // Usamos "__hidden__" como ID de categoria especial para a logo
+    console.info("[API /logo POST] Fazendo upsert de logo em Supabase com categoria __hidden__");
     const { error } = await supabase.from("menu_items").upsert(
       {
         id: LOGO_ID,
         name: "Logo",
         description: "",
         price: 0,
-        category: null, // NULL para não violar foreign key constraint
+        category: "__hidden__", // Categoria especial que não aparece no cardápio
         image: logo,
         available: false,
       },
