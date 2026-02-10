@@ -10,12 +10,32 @@ const INSTAGRAM_URL = "https://www.instagram.com/padariaeconfeitariafreitas";
 
 export function HomeContent() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [fallbackLogo, setFallbackLogo] = useState<string | null>(null);
   const hasAutoSelected = useRef(false);
   const cardapio = useCardapio();
 
   const categories = cardapio.categories;
   const menuItems = cardapio.products;
-  const logo = cardapio.logo; // Logo agora vem do contexto sincronizado!
+  // CRITICAL: Usar logo do contexto OU fallback de localStorage se contexto não tiver
+  const displayLogo = cardapio.logo || fallbackLogo;
+
+  // CRITICAL: Carregar fallback logo de localStorage se não tiver no contexto
+  useEffect(() => {
+    if (!cardapio.logo) {
+      try {
+        const savedLogo = localStorage.getItem("padaria-logo");
+        if (savedLogo) {
+          setFallbackLogo(savedLogo);
+          console.info("[HomeContent] Logo carregada de localStorage (fallback)");
+        }
+      } catch (err) {
+        console.warn("[HomeContent] Erro ao acessar localStorage:", err);
+      }
+    } else if (cardapio.logo && fallbackLogo !== cardapio.logo) {
+      // Se contexto tem logo e é diferente do fallback, usar a do contexto
+      setFallbackLogo(cardapio.logo);
+    }
+  }, [cardapio.logo]);
 
   // Selecionar a primeira categoria automaticamente quando os dados carregam
   useEffect(() => {
@@ -43,9 +63,9 @@ export function HomeContent() {
                 PADARIA FREITAS
               </p>
               <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg bg-[#d4a574]">
-                {logo ? (
+                {displayLogo ? (
                   <img
-                    src={logo}
+                    src={displayLogo}
                     alt="Logo Padaria Freitas"
                     className="w-full h-full object-cover rounded-xl"
                   />
@@ -138,9 +158,9 @@ export function HomeContent() {
               PADARIA FREITAS
             </p>
             <div className="w-24 h-24 rounded-xl flex items-center justify-center shadow-lg bg-[#d4a574]">
-              {logo ? (
+              {displayLogo ? (
                 <img
-                  src={logo}
+                  src={displayLogo}
                   alt="Logo Padaria Freitas"
                   className="w-full h-full object-cover rounded-xl"
                 />

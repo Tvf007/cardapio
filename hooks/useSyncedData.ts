@@ -101,7 +101,7 @@ export function useSyncedData(): SyncedDataState & {
 
       if (!mountedRef.current) return;
 
-      // Extrair logo dos produtos (se existir item especial __site_logo__)
+      // CRITICAL: Extrair logo dos produtos (se existir item especial __site_logo__)
       let logo: string | null = null;
       const productsWithoutLogo = data.products.filter((p) => {
         if (p.id === "__site_logo__") {
@@ -111,16 +111,26 @@ export function useSyncedData(): SyncedDataState & {
         return true;
       });
 
-      // CRITICAL FIX: Fallback to localStorage if logo is null or missing from Supabase
+      // CRITICAL FIX: SEMPRE tentar fallback localStorage como backup
+      // Isso garante que se a logo foi salva localmente mas não sincronizou para Supabase,
+      // ela ainda será exibida
       if (!logo) {
         try {
           const fallbackLogo = localStorage.getItem("padaria-logo");
           if (fallbackLogo) {
             logo = fallbackLogo;
-            console.info("[useSyncedData] Using fallback logo from localStorage");
+            console.info("[useSyncedData] Logo recuperada do localStorage (fallback)");
           }
-        } catch {
-          // localStorage unavailable
+        } catch (err) {
+          console.warn("[useSyncedData] Erro ao acessar localStorage para fallback logo:", err);
+        }
+      } else {
+        // Se recebemos logo de Supabase, salvar também em localStorage para redundância
+        try {
+          localStorage.setItem("padaria-logo", logo);
+          console.info("[useSyncedData] Logo sincronizada e salva em localStorage");
+        } catch (err) {
+          console.warn("[useSyncedData] Erro ao salvar logo em localStorage:", err);
         }
       }
 

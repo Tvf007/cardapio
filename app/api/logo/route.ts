@@ -29,15 +29,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { logo } = body as { logo: string | null };
 
+    console.info("[API /logo POST] Recebido request para salvar logo", {
+      isNull: logo === null,
+      size: logo ? (logo.length * 3) / 4 / 1024 : 0,
+    });
+
     if (!logo) {
       // Deletar logo
-      await supabase.from("menu_items").delete().eq("id", LOGO_ID);
+      console.info("[API /logo POST] Deletando logo");
+      const { error: deleteError } = await supabase
+        .from("menu_items")
+        .delete()
+        .eq("id", LOGO_ID);
+
+      if (deleteError) {
+        console.error("[API /logo POST] Erro ao deletar logo:", deleteError);
+        return NextResponse.json(
+          { error: "Erro ao deletar logo", details: deleteError.message },
+          { status: 500 }
+        );
+      }
+
       // CRITICAL FIX: Invalidate cache when logo is deleted
       localCache.invalidate("sync_data");
+      console.info("[API /logo POST] Logo deletada com sucesso e cache invalidado");
       return NextResponse.json({ success: true, message: "Logo removida" });
     }
 
     // Salvar logo como item especial (nao aparece no cardapio pois tem category __system__)
+    console.info("[API /logo POST] Fazendo upsert de logo em Supabase");
     const { error } = await supabase.from("menu_items").upsert(
       {
         id: LOGO_ID,
@@ -52,6 +72,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (error) {
+      console.error("[API /logo POST] Erro ao fazer upsert:", error);
       return NextResponse.json(
         { error: "Erro ao salvar logo", details: error.message },
         { status: 500 }
@@ -61,11 +82,18 @@ export async function POST(request: NextRequest) {
     // CRITICAL FIX: Invalidate cache when logo is successfully updated
     // This ensures all devices get fresh data within 10 seconds (polling interval)
     localCache.invalidate("sync_data");
+    console.info("[API /logo POST] Logo salva com sucesso em Supabase e cache invalidado");
 
-    return NextResponse.json({ success: true, message: "Logo salva com sucesso" });
+    return NextResponse.json({
+      success: true,
+      message: "Logo salva com sucesso",
+      logId: LOGO_ID,
+    });
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[API /logo POST] Erro não tratado:", { errorMsg, error });
     return NextResponse.json(
-      { error: "Erro ao salvar logo", details: error instanceof Error ? error.message : "Erro" },
+      { error: "Erro ao salvar logo", details: errorMsg },
       { status: 500 }
     );
   }

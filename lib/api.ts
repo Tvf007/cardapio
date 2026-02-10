@@ -168,7 +168,7 @@ interface CacheEntry<T> {
 
 class LocalCache {
   private cache: Map<string, CacheEntry<unknown>> = new Map();
-  private readonly defaultTTL = 30000; // 30 segundos
+  private readonly defaultTTL = 60000; // 60 segundos (aumentado de 30s para logo sincronizar melhor)
 
   set<T>(key: string, data: T, ttl?: number): void {
     const now = Date.now();

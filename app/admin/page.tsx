@@ -73,13 +73,22 @@ export default function AdminPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.info("[Logo Upload] Iniciando upload de logo", { fileName: file.name, size: file.size });
       const reader = new FileReader();
       reader.onloadend = async () => {
         const result = reader.result as string;
-        localStorage.setItem("padaria-logo", result);
+
+        // CRITICAL: Salvar IMEDIATAMENTE em localStorage
+        try {
+          localStorage.setItem("padaria-logo", result);
+          console.info("[Logo Upload] Logo salva em localStorage com sucesso");
+        } catch (err) {
+          console.error("[Logo Upload] Erro ao salvar em localStorage:", err);
+        }
 
         // Salvar no servidor para sincronizar com outros dispositivos
         try {
+          console.info("[Logo Upload] Enviando POST para /api/logo...");
           const response = await fetch("/api/logo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -90,18 +99,31 @@ export default function AdminPage() {
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             const errorMsg = errorData.details || errorData.error || `HTTP ${response.status}`;
-            console.error("[Logo Upload] Server error:", errorMsg);
+            console.error("[Logo Upload] Server error:", { status: response.status, errorMsg });
             toast.error(`Erro ao sincronizar logo: ${errorMsg}`);
             return;
           }
 
-          console.info("[Logo Upload] Successfully synced to server");
+          const responseData = await response.json();
+          console.info("[Logo Upload] Successfully synced to server", responseData);
+
+          // CRITICAL: Força refresh imediato do contexto para todos os componentes
+          // Aguarda um pouco para garantir que Supabase persiste os dados
+          setTimeout(() => {
+            console.info("[Logo Upload] Disparando refresh forçado do CardapioContext");
+            cardapio.refresh();
+          }, 500);
+
           toast.success("Logo atualizado com sucesso!");
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
-          console.error("[Logo Upload] Network error:", errorMsg);
+          console.error("[Logo Upload] Network error:", { errorMsg, error });
           toast.error(`Erro ao sincronizar logo: ${errorMsg}. Salvo localmente.`);
         }
+      };
+      reader.onerror = () => {
+        console.error("[Logo Upload] Erro ao ler arquivo");
+        toast.error("Erro ao ler o arquivo");
       };
       reader.readAsDataURL(file);
     }
