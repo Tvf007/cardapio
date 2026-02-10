@@ -76,7 +76,6 @@ export default function AdminPage() {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const result = reader.result as string;
-        setLogo(result);
         localStorage.setItem("padaria-logo", result);
 
         // Salvar no servidor para sincronizar com outros dispositivos
