@@ -212,22 +212,22 @@ export function useSyncedData(): SyncedDataState & {
       // BroadcastChannel not supported - não crítico pois temos Realtime
     }
 
-    // Supabase Realtime - Agressivo para sincronização entre dispositivos
+    // Supabase Realtime - Usar debounce em ambos para evitar requisições duplicadas
     const channel = supabase
       .channel("cardapio-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
         () => {
-          // Sincronização imediata para mudanças de categoria
-          refresh();
+          // Sincronização com debounce para evitar múltiplas requisições
+          debouncedRefresh();
         }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "menu_items" },
         () => {
-          // Sincronização imediata para mudanças de produtos (com pequeno debounce)
+          // Sincronização com debounce (1s)
           debouncedRefresh();
         }
       )

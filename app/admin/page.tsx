@@ -73,17 +73,48 @@ export default function AdminPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.info("[Logo Upload] Iniciando upload de logo", { fileName: file.name, size: file.size });
+      // ✓ NOVO: Validar tamanho ANTES de qualquer coisa
+      const maxSizeKB = 500;
+      const fileSizeKB = file.size / 1024;
+
+      if (fileSizeKB > maxSizeKB) {
+        toast.error(
+          `Imagem muito grande (${fileSizeKB.toFixed(0)}KB). ` +
+          `Máximo permitido: ${maxSizeKB}KB. ` +
+          `Tente comprimir a imagem ou reduzir sua qualidade.`
+        );
+        console.warn("[Logo Upload] Arquivo rejeitado por tamanho", {
+          fileName: file.name,
+          sizeKB: fileSizeKB,
+          maxSizeKB
+        });
+        return;
+      }
+
+      console.info("[Logo Upload] Iniciando upload de logo", { fileName: file.name, size: file.size, sizeKB: fileSizeKB });
       const reader = new FileReader();
       reader.onloadend = async () => {
         const result = reader.result as string;
 
+        // ✓ NOVO: Validar tamanho em base64 (que é maior)
+        const base64SizeKB = (result.length * 3) / 4 / 1024;
+        if (base64SizeKB > 700) {
+          toast.error(
+            `Imagem codificada muito grande (${base64SizeKB.toFixed(0)}KB). ` +
+            `Máximo: 700KB.`
+          );
+          console.error("[Logo Upload] Base64 rejeitado por tamanho", { base64SizeKB });
+          return;
+        }
+
         // CRITICAL: Salvar IMEDIATAMENTE em localStorage
         try {
           localStorage.setItem("padaria-logo", result);
-          console.info("[Logo Upload] Logo salva em localStorage com sucesso");
+          console.info("[Logo Upload] Logo salva em localStorage com sucesso", { base64SizeKB });
         } catch (err) {
           console.error("[Logo Upload] Erro ao salvar em localStorage:", err);
+          toast.error("Erro ao salvar logo localmente. Tente novamente.");
+          return;
         }
 
         // Salvar no servidor para sincronizar com outros dispositivos
@@ -106,14 +137,6 @@ export default function AdminPage() {
 
           const responseData = await response.json();
           console.info("[Logo Upload] Successfully synced to server", responseData);
-
-          // CRITICAL: Força refresh imediato do contexto para todos os componentes
-          // Aguarda um pouco para garantir que Supabase persiste os dados
-          setTimeout(() => {
-            console.info("[Logo Upload] Disparando refresh forçado do CardapioContext");
-            cardapio.refresh();
-          }, 500);
-
           toast.success("Logo atualizado com sucesso!");
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
