@@ -217,7 +217,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={() => logoInputRef.current?.click()}
-                className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer flex-shrink-0"
+                className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center hover:opacity-80 transition-all duration-200 shadow-md hover:shadow-lg group cursor-pointer flex-shrink-0"
                 style={{ backgroundColor: "#7c4e42" }}
                 title="Clique para alterar logo"
               >
@@ -243,8 +243,8 @@ export default function AdminPage() {
                 aria-label="Upload logo"
               />
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">Cardápio Caixa Freitas</h1>
-                <p className="text-xs text-gray-600 truncate">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">Gerenciador do Cardápio Freitas</h1>
+                <p className="text-sm text-gray-600 truncate">
                   Painel Admin - <span className="font-semibold">{user.email}</span>
                 </p>
               </div>

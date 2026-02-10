@@ -152,20 +152,20 @@ export function ProductForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8 border border-gray-200">
-      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 sm:p-8 mb-8 border border-gray-200">
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">
         {product ? "Editar Produto" : "Novo Produto"}
       </h2>
 
       {error && (
-        <div className="mb-3 sm:mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-700 text-xs sm:text-sm font-medium">{error}</p>
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-700 text-sm sm:text-base font-medium">{error}</p>
         </div>
       )}
 
       {/* Image Upload */}
-      <div className="mb-4 sm:mb-6">
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+      <div className="mb-8">
+        <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-3">
           Foto do Produto
         </label>
         <label className="cursor-pointer block">
@@ -183,7 +183,7 @@ export function ProductForm({
                     setImagePreview("");
                     setFormData((prev) => ({ ...prev, image: "" }));
                   }}
-                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs sm:text-sm"
+                  className="absolute top-1 right-1 bg-gray-700 hover:bg-gray-800 text-white rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-sm sm:text-base"
                 >
                   X
                 </RippleButton>
@@ -191,7 +191,7 @@ export function ProductForm({
             ) : (
               <div className="py-4 sm:py-6">
                 <p className="text-2xl sm:text-3xl mb-2">&#128248;</p>
-                <p className="text-gray-700 text-xs sm:text-sm font-medium">Clique para adicionar uma foto</p>
+                <p className="text-gray-700 text-sm sm:text-base font-medium">Clique para adicionar uma foto</p>
               </div>
             )}
           </div>
@@ -207,7 +207,7 @@ export function ProductForm({
       {/* Name and Price */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
             Nome
           </label>
           <input
@@ -215,13 +215,13 @@ export function ProductForm({
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="Ex: Frango a Parmegiana"
-            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
+            className="form-input w-full px-4 py-3 sm:py-3 border border-gray-300 rounded-md text-sm sm:text-base bg-white text-gray-900 placeholder-gray-400 transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-            Preco (R$)
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+            Preço (R$)
           </label>
           <input
             type="number"
@@ -232,15 +232,15 @@ export function ProductForm({
               setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : 0 })
             }
             placeholder="0,00"
-            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
+            className="form-input w-full px-4 py-3 sm:py-3 border border-gray-300 rounded-md text-sm sm:text-base bg-white text-gray-900 placeholder-gray-400 transition-all"
           />
         </div>
       </div>
 
       {/* Category and Availability */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
             Categoria
           </label>
           <select
@@ -248,7 +248,7 @@ export function ProductForm({
             onChange={(e) =>
               setFormData({ ...formData, category: e.target.value })
             }
-            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 transition-all"
+            className="form-input w-full px-4 py-3 border border-gray-300 rounded-md text-sm sm:text-base bg-white text-gray-900 transition-all"
           >
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
@@ -259,7 +259,7 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
             Disponibilidade
           </label>
           <select
@@ -267,18 +267,18 @@ export function ProductForm({
             onChange={(e) =>
               setFormData({ ...formData, available: e.target.value === "true" })
             }
-            className="form-input w-full px-3 sm:px-3.5 py-2 sm:py-2.5 border border-gray-300 rounded-md text-xs sm:text-sm bg-white text-gray-900 transition-all"
+            className="form-input w-full px-4 py-3 border border-gray-300 rounded-md text-sm sm:text-base bg-white text-gray-900 transition-all"
           >
-            <option value="true">Disponivel</option>
-            <option value="false">Indisponivel</option>
+            <option value="true">Disponível</option>
+            <option value="false">Indisponível</option>
           </select>
         </div>
       </div>
 
       {/* Description */}
-      <div className="mb-6">
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-          Descricao
+      <div className="mb-8">
+        <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+          Descrição
         </label>
         <textarea
           value={formData.description}
@@ -286,17 +286,17 @@ export function ProductForm({
             setFormData({ ...formData, description: e.target.value })
           }
           placeholder="Descreva o produto aqui..."
-          className="form-input w-full px-3.5 py-2.5 border border-gray-300 rounded-md resize-none text-sm bg-white text-gray-900 placeholder-gray-400 transition-all"
-          rows={3}
+          className="form-input w-full px-4 py-3 border border-gray-300 rounded-md resize-none text-sm sm:text-base bg-white text-gray-900 placeholder-gray-400 transition-all"
+          rows={4}
         />
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-4">
         <RippleButton
           type="submit"
           disabled={isLoading}
-          className={`btn-primary flex-1 text-white py-2.5 rounded-md font-medium text-sm ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`btn-primary flex-1 text-white py-3 rounded-md font-semibold text-base ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
@@ -311,7 +311,7 @@ export function ProductForm({
           type="button"
           onClick={onCancel}
           disabled={isLoading}
-          className={`flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-md font-medium text-sm transition-colors ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+          className={`flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-md font-semibold text-base transition-colors ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
         >
           Cancelar
         </RippleButton>

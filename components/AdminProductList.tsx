@@ -141,7 +141,7 @@ export function AdminProductList({
 
               {/* Availability Badge - Top Right */}
               <span
-                className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-sm ${
+                className={`absolute top-3 right-3 px-3 py-1.5 rounded-full text-sm font-bold text-white shadow-sm ${
                   product.available ? "bg-green-500" : "bg-red-500"
                 }`}
               >
@@ -150,10 +150,10 @@ export function AdminProductList({
             </div>
 
             {/* Content Section */}
-            <div className="p-5 flex flex-col flex-1">
+            <div className="p-6 flex flex-col flex-1">
               {/* Category Badge */}
               <span
-                className="inline-block self-start px-3 py-1 rounded-full text-xs font-semibold mb-3"
+                className="inline-block self-start px-3 py-1.5 rounded-full text-sm font-semibold mb-3"
                 style={{
                   backgroundColor: "#f3ece9",
                   color: "#7c4e42",
@@ -169,7 +169,7 @@ export function AdminProductList({
 
               {/* Description */}
               {product.description && (
-                <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                <p className="text-base text-gray-500 mb-3 line-clamp-2">
                   {product.description}
                 </p>
               )}
@@ -186,11 +186,11 @@ export function AdminProductList({
               <div className="flex gap-3">
                 <button
                   onClick={() => setEditingId(product.id)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-base font-semibold text-white transition-all duration-200 hover:opacity-90"
                   style={{ backgroundColor: "#7c4e42" }}
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -214,10 +214,10 @@ export function AdminProductList({
                       onDelete(product.id);
                     }
                   }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition-all duration-200"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-base font-semibold bg-red-500 text-white hover:bg-red-600 transition-all duration-200"
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
