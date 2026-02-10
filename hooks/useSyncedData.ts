@@ -23,8 +23,8 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-const POLL_INTERVAL = 30000;
-const DEBOUNCE_DELAY = 1000;
+const POLL_INTERVAL = 10000; // Reduzido de 30s para 10s para sincronização mais rápida
+const DEBOUNCE_DELAY = 500; // Reduzido de 1s para 500ms para resposta mais rápida
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
@@ -157,7 +157,9 @@ export function useSyncedData(): SyncedDataState & {
     // Carregar dados do Supabase imediatamente
     refresh();
 
-    // BroadcastChannel para sync entre abas
+    // BroadcastChannel para sync entre abas DO MESMO DISPOSITIVO
+    // Nota: BroadcastChannel não funciona entre dispositivos diferentes
+    // Dependemos de Realtime + Polling para sincronização entre devices
     try {
       broadcastChannelRef.current = new BroadcastChannel("cardapio-sync");
       broadcastChannelRef.current.onmessage = (event: MessageEvent<BroadcastMessage>) => {
@@ -171,25 +173,32 @@ export function useSyncedData(): SyncedDataState & {
         }
       };
     } catch {
-      // BroadcastChannel not supported
+      // BroadcastChannel not supported - não crítico pois temos Realtime
     }
 
-    // Supabase Realtime
+    // Supabase Realtime - Agressivo para sincronização entre dispositivos
     const channel = supabase
       .channel("cardapio-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
-        () => debouncedRefresh()
+        () => {
+          // Sincronização imediata para mudanças de categoria
+          refresh();
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "menu_items" },
-        () => debouncedRefresh()
+        () => {
+          // Sincronização imediata para mudanças de produtos (com pequeno debounce)
+          debouncedRefresh();
+        }
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setState((prev) => ({ ...prev, realtimeConnected: true }));
+          console.info("[useSyncedData] Realtime conectado com sucesso");
         }
       });
 

@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tamanho das imagens para evitar falhas de sincronização
-    const maxImageSizeKB = 500;
+    // Limite aumentado de 500KB para 700KB para mais tolerância com imagens variadas
+    const maxImageSizeKB = 700;
     for (const product of products) {
       const prod = product as Record<string, unknown>;
       if (prod.image && typeof prod.image === "string") {

@@ -44,6 +44,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         const validCats = getValidCategories(syncedData.categories);
         await syncToSupabase(optimisticProducts, validCats);
+
+        // IMPORTANTE: Forçar refresh imediato para sincronização entre dispositivos
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 500);
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -63,6 +68,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         const validCats = getValidCategories(syncedData.categories);
         await syncToSupabase(optimisticProducts, validCats);
+
+        // IMPORTANTE: Forçar refresh imediato para sincronização entre dispositivos
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 500);
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -82,13 +92,19 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         const validCats = getValidCategories(syncedData.categories);
         await syncToSupabase(optimisticProducts, validCats);
+
+        // IMPORTANTE: Forçar refresh imediato para sincronização entre dispositivos
+        // Sem isso, outros dispositivos precisam aguardar o polling (10s)
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 500);
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
 
         // Melhorar mensagem de erro
         const errorMsg = error instanceof Error ? error.message : "Erro ao sincronizar";
-        if (errorMsg.includes("muito grande") || errorMsg.includes("500KB")) {
+        if (errorMsg.includes("muito grande") || errorMsg.includes("700KB") || errorMsg.includes("500KB")) {
           throw new Error("Imagem muito grande para sincronizar. Tente comprimir a imagem ou reduzir sua qualidade.");
         }
         throw error;
