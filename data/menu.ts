@@ -16,6 +16,10 @@ export const categories: Category[] = [
   {
     "id": "1769437558037",
     "name": "doces"
+  },
+  {
+    "id": "__hidden__",
+    "name": "Sistema (Não exibir)"
   }
 ];
 
