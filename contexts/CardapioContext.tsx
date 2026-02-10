@@ -9,6 +9,7 @@ interface CardapioContextType {
   // Dados
   categories: Category[];
   products: MenuItem[];
+  logo: string | null;
   loading: boolean;
   error: string | null;
   lastSync: Date | null;
@@ -200,6 +201,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       value={{
         categories: syncedData.categories,
         products: syncedData.products,
+        logo: syncedData.logo,
         loading: syncedData.loading,
         error: syncedData.error,
         lastSync: syncedData.lastSync,

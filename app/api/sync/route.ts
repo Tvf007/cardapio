@@ -53,11 +53,9 @@ export async function GET() {
 
     // Filtrar categorias invalidas e normalizar produtos
     const validCategories = filterValidCategories(categories);
-    // Excluir itens do sistema (logo etc) que comecam com __
-    const realProducts = products.filter(
-      (p: Record<string, unknown>) => !String(p.id || "").startsWith("__")
-    );
-    const normalizedProducts = realProducts.map((p: Record<string, unknown>) => ({
+    // IMPORTANTE: NÃO filtrar __site_logo__ para sincronizar logo entre dispositivos
+    // A logo será extraída pelo frontend (useSyncedData.ts)
+    const normalizedProducts = products.map((p: Record<string, unknown>) => ({
       ...p,
       price: normalizePrice(p.price),
       available: normalizeAvailable(p.available),

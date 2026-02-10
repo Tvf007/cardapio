@@ -17,6 +17,7 @@ interface BroadcastMessage {
 export interface SyncedDataState {
   categories: Category[];
   products: MenuItem[];
+  logo: string | null;
   loading: boolean;
   error: string | null;
   lastSync: Date | null;
@@ -34,6 +35,7 @@ export function useSyncedData(): SyncedDataState & {
   const [state, setState] = useState<SyncedDataState>({
     categories: [],
     products: [],
+    logo: null,
     loading: true,
     error: null,
     lastSync: null,
@@ -99,17 +101,28 @@ export function useSyncedData(): SyncedDataState & {
 
       if (!mountedRef.current) return;
 
+      // Extrair logo dos produtos (se existir item especial __site_logo__)
+      let logo: string | null = null;
+      const productsWithoutLogo = data.products.filter((p) => {
+        if (p.id === "__site_logo__") {
+          logo = p.image || null;
+          return false; // Filtrar logo dos produtos reais
+        }
+        return true;
+      });
+
       setState((prev) => ({
         ...prev,
         categories: data.categories,
-        products: data.products,
+        products: productsWithoutLogo,
+        logo: logo,
         loading: false,
         error: null,
         lastSync: new Date(),
       }));
 
-      saveToLocalStorage(data.categories, data.products);
-      broadcastUpdate(data.categories, data.products);
+      saveToLocalStorage(data.categories, productsWithoutLogo);
+      broadcastUpdate(data.categories, productsWithoutLogo);
     } catch (error) {
       if (!mountedRef.current) return;
 

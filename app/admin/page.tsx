@@ -19,12 +19,13 @@ export default function AdminPage() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [logo, setLogo] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "categorias" | "produtos">("dashboard");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const cardapio = useCardapio();
+
+  const logo = cardapio.logo; // Logo agora vem do contexto sincronizado!
 
   useEffect(() => {
     const loadUser = async () => {
@@ -32,21 +33,6 @@ export default function AdminPage() {
       setUser(currentUser);
       setLoading(false);
     };
-
-    // Carregar logo do servidor
-    fetch("/api/logo")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.logo) {
-          setLogo(data.logo);
-          localStorage.setItem("padaria-logo", data.logo);
-        }
-      })
-      .catch(() => {
-        // Fallback para localStorage
-        const savedLogo = localStorage.getItem("padaria-logo");
-        if (savedLogo) setLogo(savedLogo);
-      });
 
     loadUser();
   }, []);

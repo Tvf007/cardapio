@@ -9,13 +9,13 @@ const WHATSAPP_URL = "https://wa.me/5527997835980";
 const INSTAGRAM_URL = "https://www.instagram.com/padariaeconfeitariafreitas";
 
 export function HomeContent() {
-  const [logo, setLogo] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const hasAutoSelected = useRef(false);
   const cardapio = useCardapio();
 
   const categories = cardapio.categories;
   const menuItems = cardapio.products;
+  const logo = cardapio.logo; // Logo agora vem do contexto sincronizado!
 
   // Selecionar a primeira categoria automaticamente quando os dados carregam
   useEffect(() => {
@@ -24,30 +24,6 @@ export function HomeContent() {
       setActiveCategory(categories[0].id);
     }
   }, [categories]);
-
-  useEffect(() => {
-    // Buscar logo do servidor (Supabase) com fallback para localStorage
-    async function fetchLogo() {
-      try {
-        const res = await fetch("/api/logo");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.logo) {
-            setLogo(data.logo);
-            localStorage.setItem("padaria-logo", data.logo);
-            return;
-          }
-        }
-      } catch {
-        // Fallback para localStorage se a API falhar
-      }
-      const savedLogo = localStorage.getItem("padaria-logo");
-      if (savedLogo) {
-        setLogo(savedLogo);
-      }
-    }
-    fetchLogo();
-  }, []);
 
   const filteredItems = activeCategory
     ? menuItems.filter((item) => item.category === activeCategory)
