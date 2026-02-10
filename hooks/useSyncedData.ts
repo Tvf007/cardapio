@@ -24,8 +24,8 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-const POLL_INTERVAL = 3000; // Reduzido de 10s para 3s para sincronização MUITO RÁPIDA de logo entre devices
-const DEBOUNCE_DELAY = 300; // Reduzido de 500ms para 300ms para resposta mais rápida
+const POLL_INTERVAL = 10000; // Polling a cada 10 segundos (balanceado entre sync rápido e performance)
+const DEBOUNCE_DELAY = 1000; // Debounce de 1s para evitar requisições muito frequentes
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;

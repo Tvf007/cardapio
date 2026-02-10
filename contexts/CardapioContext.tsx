@@ -190,7 +190,29 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
   const syncToCloud = useCallback(async () => {
     try {
       const validCats = getValidCategories(syncedData.categories);
-      await syncToSupabase(syncedData.products, validCats);
+
+      // CRITICAL FIX: Incluir logo na sincronização para evitar deleção silenciosa
+      // A logo é armazenada como item especial __site_logo__ e precisa ser incluída em todo sync
+      let productsToSync = syncedData.products;
+      if (syncedData.logo) {
+        const logoItem = {
+          id: "__site_logo__",
+          name: "Logo",
+          category: "__hidden__",
+          image: syncedData.logo,
+          available: false,
+          price: 0,
+          description: ""
+        };
+
+        // Verificar se logo já está na lista (por segurança)
+        const hasLogo = productsToSync.some(p => p.id === "__site_logo__");
+        if (!hasLogo) {
+          productsToSync = [...productsToSync, logoItem];
+        }
+      }
+
+      await syncToSupabase(productsToSync, validCats);
     } catch (error) {
       throw error;
     }
