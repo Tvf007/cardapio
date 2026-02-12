@@ -25,57 +25,66 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-// PERFORMANCE FIX: Aumentar polling para 30s (Realtime cuida da sync rápida)
+// PERFORMANCE FIX: Polling a cada 30s (Realtime cuida da sync rápida)
 const POLL_INTERVAL = 30000;
 const DEBOUNCE_DELAY = 800;
+
+// IDs de sistema que não devem aparecer no cardápio público
+const HIDDEN_CATEGORY_ID = "__hidden__";
+const LOGO_ITEM_ID = "__site_logo__";
+
+/**
+ * Filtra categorias e produtos de sistema (logo, __hidden__)
+ * para que não apareçam no cardápio público
+ */
+function filterSystemItems(
+  categories: Category[],
+  products: MenuItem[]
+): { categories: Category[]; products: MenuItem[]; logo: string | null } {
+  let logo: string | null = null;
+
+  // Filtrar categoria __hidden__ das categorias visíveis
+  const visibleCategories = categories.filter(
+    (c) => c.id !== HIDDEN_CATEGORY_ID
+  );
+
+  // Filtrar logo e produtos com categoria __hidden__
+  const visibleProducts = products.filter((p) => {
+    if (p.id === LOGO_ITEM_ID) {
+      logo = p.image || null;
+      return false;
+    }
+    if (p.category === HIDDEN_CATEGORY_ID) {
+      return false;
+    }
+    return true;
+  });
+
+  return { categories: visibleCategories, products: visibleProducts, logo };
+}
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
   setOptimisticData: (data: { categories?: Category[]; products?: MenuItem[] }) => void;
 } {
-  // PERFORMANCE FIX: Iniciar com dados do localStorage para evitar flash de loading
-  const [state, setState] = useState<SyncedDataState>(() => {
-    // Tentar carregar do localStorage para primeiro render instantâneo
-    if (typeof window !== "undefined") {
-      try {
-        const cachedCat = localStorage.getItem("cardapio-categories");
-        const cachedProd = localStorage.getItem("cardapio-products");
-        const cachedLogo = localStorage.getItem("padaria-logo");
-        const categories = cachedCat ? JSON.parse(cachedCat) : [];
-        const products = cachedProd ? JSON.parse(cachedProd) : [];
-
-        if (categories.length > 0 || products.length > 0) {
-          return {
-            categories,
-            products,
-            logo: cachedLogo || null,
-            loading: false, // Já temos dados em cache, não mostrar loading
-            error: null,
-            lastSync: null,
-            realtimeConnected: false,
-          };
-        }
-      } catch {
-        // Fallback para estado vazio
-      }
-    }
-
-    return {
-      categories: [],
-      products: [],
-      logo: null,
-      loading: true,
-      error: null,
-      lastSync: null,
-      realtimeConnected: false,
-    };
+  // FIX HYDRATION: Sempre iniciar com estado vazio para evitar mismatch SSR/cliente
+  // O localStorage é carregado via useEffect após a hidratação
+  const [state, setState] = useState<SyncedDataState>({
+    categories: [],
+    products: [],
+    logo: null,
+    loading: true,
+    error: null,
+    lastSync: null,
+    realtimeConnected: false,
   });
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
-  const isRefreshingRef = useRef(false); // Evitar refreshes simultâneos
+  const isRefreshingRef = useRef(false);
+  const hasLoadedCacheRef = useRef(false);
 
   const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[], logo: string | null) => {
     try {
@@ -89,8 +98,8 @@ export function useSyncedData(): SyncedDataState & {
     }
   }, []);
 
-  const loadFromLocalStorage = useCallback((): { categories: Category[]; products: MenuItem[] } => {
-    const result = { categories: [] as Category[], products: [] as MenuItem[] };
+  const loadFromLocalStorage = useCallback((): { categories: Category[]; products: MenuItem[]; logo: string | null } => {
+    const result = { categories: [] as Category[], products: [] as MenuItem[], logo: null as string | null };
     try {
       const cat = localStorage.getItem("cardapio-categories");
       if (cat) result.categories = JSON.parse(cat);
@@ -102,6 +111,12 @@ export function useSyncedData(): SyncedDataState & {
       if (prod) result.products = JSON.parse(prod);
     } catch {
       localStorage.removeItem("cardapio-products");
+    }
+    try {
+      const logo = localStorage.getItem("padaria-logo");
+      if (logo) result.logo = logo;
+    } catch {
+      // ignore
     }
     return result;
   }, []);
@@ -129,65 +144,60 @@ export function useSyncedData(): SyncedDataState & {
   const refresh = useCallback(async (retryCount = 0, maxRetries = 2) => {
     if (!mountedRef.current) return;
 
-    // PERFORMANCE FIX: Evitar refreshes simultâneos
+    // Evitar refreshes simultâneos
     if (isRefreshingRef.current && retryCount === 0) {
-      console.debug("[useSyncedData] Refresh já em andamento, ignorando");
       return;
     }
 
     isRefreshingRef.current = true;
 
     try {
-      // CRITICAL FIX: Invalidar cache para garantir dados frescos do Supabase
-      // Isso é essencial para sincronização de logo entre dispositivos
+      // Invalidar cache para garantir dados frescos do Supabase
       localCache.invalidate("sync_data");
 
       const data = await syncFromSupabase(undefined, { forceRefresh: true });
 
       if (!mountedRef.current) return;
 
-      // CRITICAL: Extrair logo dos produtos (se existir item especial __site_logo__)
-      let logo: string | null = null;
-      const productsWithoutLogo = data.products.filter((p) => {
-        if (p.id === "__site_logo__") {
-          logo = p.image || null;
-          return false; // Filtrar logo dos produtos reais
-        }
-        return true;
-      });
+      // Filtrar itens de sistema (logo, __hidden__) dos dados visíveis
+      const { categories, products, logo } = filterSystemItems(
+        data.categories,
+        data.products
+      );
 
       // Fallback localStorage apenas se Supabase não retornou logo
-      if (!logo) {
+      let finalLogo = logo;
+      if (!finalLogo) {
         try {
           const fallbackLogo = localStorage.getItem("padaria-logo");
           if (fallbackLogo) {
-            logo = fallbackLogo;
+            finalLogo = fallbackLogo;
             console.info("[useSyncedData] Logo recuperada do localStorage (fallback)");
           }
-        } catch (err) {
-          console.warn("[useSyncedData] Erro ao acessar localStorage para fallback logo:", err);
+        } catch {
+          // localStorage unavailable
         }
       } else {
-        // Se recebemos logo de Supabase, salvar em localStorage para redundância
+        // Salvar logo do Supabase em localStorage para redundância
         try {
-          localStorage.setItem("padaria-logo", logo);
+          localStorage.setItem("padaria-logo", finalLogo);
         } catch {
           // localStorage unavailable
         }
       }
 
-      setState((prev) => ({
-        ...prev,
-        categories: data.categories,
-        products: productsWithoutLogo,
-        logo: logo,
+      setState({
+        categories,
+        products,
+        logo: finalLogo,
         loading: false,
         error: null,
         lastSync: new Date(),
-      }));
+        realtimeConnected: state.realtimeConnected,
+      });
 
-      saveToLocalStorage(data.categories, productsWithoutLogo, logo);
-      broadcastUpdate(data.categories, productsWithoutLogo, logo);
+      saveToLocalStorage(categories, products, finalLogo);
+      broadcastUpdate(categories, products, finalLogo);
     } catch (error) {
       if (!mountedRef.current) return;
 
@@ -203,7 +213,7 @@ export function useSyncedData(): SyncedDataState & {
         return;
       }
 
-      // Somente usar localStorage como fallback se nao tem dados ainda
+      // Somente usar localStorage como fallback se não tem dados ainda
       const fallback = loadFromLocalStorage();
       const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";
 
@@ -211,6 +221,7 @@ export function useSyncedData(): SyncedDataState & {
         ...prev,
         categories: prev.categories.length > 0 ? prev.categories : fallback.categories,
         products: prev.products.length > 0 ? prev.products : fallback.products,
+        logo: prev.logo || fallback.logo,
         loading: false,
         error: `Erro ao sincronizar (tentativas exauridas): ${errorMsg}`,
         lastSync: new Date(),
@@ -220,6 +231,7 @@ export function useSyncedData(): SyncedDataState & {
     } finally {
       isRefreshingRef.current = false;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveToLocalStorage, loadFromLocalStorage, broadcastUpdate]);
 
   const debouncedRefresh = useCallback(() => {
@@ -231,10 +243,34 @@ export function useSyncedData(): SyncedDataState & {
     }, DEBOUNCE_DELAY);
   }, [refresh]);
 
+  // PERFORMANCE: Carregar cache do localStorage APÓS hidratação (evita React #418)
+  useEffect(() => {
+    if (hasLoadedCacheRef.current) return;
+    hasLoadedCacheRef.current = true;
+
+    try {
+      const cached = loadFromLocalStorage();
+      if (cached.categories.length > 0 || cached.products.length > 0) {
+        // Filtrar sistema items do cache também
+        const filtered = filterSystemItems(cached.categories, cached.products);
+        setState((prev) => ({
+          ...prev,
+          categories: filtered.categories,
+          products: filtered.products,
+          logo: filtered.logo || cached.logo || prev.logo,
+          loading: false, // Temos cache, não precisa mostrar loading
+        }));
+        console.info("[useSyncedData] Dados carregados do cache local");
+      }
+    } catch {
+      // Sem cache disponível, aguardar fetch do Supabase
+    }
+  }, [loadFromLocalStorage]);
+
   useEffect(() => {
     mountedRef.current = true;
 
-    // Carregar dados do Supabase imediatamente (em background se já temos cache)
+    // Carregar dados do Supabase (em background se já temos cache)
     refresh();
 
     // BroadcastChannel para sync entre abas DO MESMO DISPOSITIVO
@@ -255,7 +291,7 @@ export function useSyncedData(): SyncedDataState & {
       // BroadcastChannel not supported
     }
 
-    // Supabase Realtime - escuta mudanças no banco
+    // Supabase Realtime - escuta mudanças no banco para TODOS os dispositivos
     const channel = supabase
       .channel("cardapio-realtime")
       .on(
@@ -284,8 +320,7 @@ export function useSyncedData(): SyncedDataState & {
         }
       });
 
-    // PERFORMANCE FIX: Polling a cada 30s (antes era 10s)
-    // Realtime cuida das mudanças em tempo real, polling é backup
+    // Polling a cada 30s como backup do Realtime
     pollIntervalRef.current = setInterval(() => {
       refresh();
     }, POLL_INTERVAL);

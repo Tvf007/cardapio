@@ -182,9 +182,12 @@ export async function POST(request: NextRequest) {
     );
     const newProductIds = new Set(products.map((p: unknown) => String((p as Record<string, unknown>).id)));
 
+    // CRITICAL FIX: Proteger categoria __hidden__ e logo __site_logo__ de deleção
+    // O frontend filtra esses itens de sistema, então eles nunca vêm no array de sync
+    // Sem esta proteção, eles seriam deletados a cada sync do admin
     const categoriesToDelete = [
       ...existingCategoryIds,
-    ].filter((id) => !newCategoryIds.has(id));
+    ].filter((id) => !newCategoryIds.has(id) && id !== "__hidden__");
     const productsToDelete = [...existingProductIds].filter(
       (id) => !newProductIds.has(id) && id !== "__site_logo__"
     );
