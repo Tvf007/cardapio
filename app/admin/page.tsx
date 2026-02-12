@@ -338,7 +338,6 @@ export default function AdminPage() {
     const reordered = cats.map((c, i) => ({ ...c, order: i }));
     try {
       await cardapio.reorderCategories(reordered);
-      toast.success("Ordem atualizada!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
     }
