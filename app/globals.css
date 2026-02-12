@@ -46,6 +46,7 @@ body {
 /* Menu item card hover */
 .menu-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
 }
 
 .menu-card:hover {
@@ -200,6 +201,31 @@ body {
 
 .toast.removing {
   animation: slideOutToRight 0.3s ease-in forwards;
+}
+
+/* Modal animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-modalSlideUp {
+  animation: modalSlideUp 0.3s ease-out forwards;
 }
 
 /* Scrollbar hide utility */
