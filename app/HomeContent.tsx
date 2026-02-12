@@ -10,8 +10,29 @@ const INSTAGRAM_URL = "https://www.instagram.com/padariaeconfeitariafreitas";
 
 export function HomeContent() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [horarioSemana, setHorarioSemana] = useState("Seg a Sab: 5h30 - 20h30");
+  const [horarioDomingo, setHorarioDomingo] = useState("Domingo: 5h30 - 13h30");
   const hasAutoSelected = useRef(false);
   const cardapio = useCardapio();
+
+  // Carregar horários do servidor
+  useEffect(() => {
+    const loadHorarios = async () => {
+      try {
+        const res = await fetch("/api/site-config?key=horarios");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) {
+            setHorarioSemana(data.value.semana || "Seg a Sab: 5h30 - 20h30");
+            setHorarioDomingo(data.value.domingo || "Domingo: 5h30 - 13h30");
+          }
+        }
+      } catch {
+        // Usa valores padrão
+      }
+    };
+    loadHorarios();
+  }, []);
 
   const categories = cardapio.categories;
   const menuItems = cardapio.products;
@@ -98,8 +119,8 @@ export function HomeContent() {
               <div>
                 <h3 className="font-bold text-lg mb-4">Horario</h3>
                 <p className="text-gray-400 text-sm">
-                  Seg a Sab: 5h30 - 20h30<br />
-                  Domingo: 5h30 - 13h30
+                  {horarioSemana}<br />
+                  {horarioDomingo}
                 </p>
               </div>
               <div>

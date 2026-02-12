@@ -48,10 +48,13 @@ function filterSystemItems(
     (c) => c.id !== HIDDEN_CATEGORY_ID
   );
 
-  // Filtrar logo e produtos com categoria __hidden__
+  // Filtrar logo, site_config e produtos com categoria __hidden__
   const visibleProducts = products.filter((p) => {
     if (p.id === LOGO_ITEM_ID) {
       logo = p.image || null;
+      return false;
+    }
+    if (p.id.startsWith("__site_config_")) {
       return false;
     }
     if (p.category === HIDDEN_CATEGORY_ID) {

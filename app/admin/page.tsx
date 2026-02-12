@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { v4 as uuid } from "uuid";
+import { QRCodeSVG } from "qrcode.react";
 import { AdminLogin } from "@/components/AdminLogin";
 import { ProductForm } from "@/components/ProductForm";
 import { AdminProductList } from "@/components/AdminProductList";
@@ -21,7 +22,12 @@ export default function AdminPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [activeTab, setActiveTab] = useState<"dashboard" | "categorias" | "produtos">("dashboard");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [horarioSemana, setHorarioSemana] = useState("Seg a Sab: 5h30 - 20h30");
+  const [horarioDomingo, setHorarioDomingo] = useState("Domingo: 5h30 - 13h30");
+  const [editingHorario, setEditingHorario] = useState(false);
+  const [savingHorario, setSavingHorario] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const cardapio = useCardapio();
 
@@ -36,6 +42,80 @@ export default function AdminPage() {
 
     loadUser();
   }, []);
+
+  // Carregar horarios do servidor
+  useEffect(() => {
+    const loadHorarios = async () => {
+      try {
+        const res = await fetch("/api/site-config?key=horarios", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) {
+            setHorarioSemana(data.value.semana || "Seg a Sab: 5h30 - 20h30");
+            setHorarioDomingo(data.value.domingo || "Domingo: 5h30 - 13h30");
+          }
+        }
+      } catch {
+        // Usa valores padrão
+      }
+    };
+    loadHorarios();
+  }, []);
+
+  // Download QR Code como PNG
+  const handleDownloadQR = useCallback(() => {
+    const svgElement = qrCodeRef.current?.querySelector("svg");
+    if (!svgElement) return;
+
+    const canvas = document.createElement("canvas");
+    const size = 1024; // Alta resolução
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const img = new Image();
+    img.onload = () => {
+      // Fundo branco
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+
+      const link = document.createElement("a");
+      link.download = "qrcode-cardapio-freitas.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      toast.success("QR Code baixado!");
+    };
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  }, [toast]);
+
+  // Salvar horários no servidor
+  const handleSaveHorarios = useCallback(async () => {
+    setSavingHorario(true);
+    try {
+      const res = await fetch("/api/site-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "horarios",
+          value: { semana: horarioSemana, domingo: horarioDomingo },
+        }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erro ao salvar");
+      }
+      setEditingHorario(false);
+      toast.success("Horarios atualizados!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar horarios");
+    } finally {
+      setSavingHorario(false);
+    }
+  }, [horarioSemana, horarioDomingo, toast]);
 
   const handleLogin = async (_email: string, password: string) => {
     try {
@@ -372,30 +452,136 @@ export default function AdminPage() {
         {/* Dashboard Tab */}
         {activeTab === "dashboard" && (
           <div className="space-y-8">
-            {/* Share Section */}
+            {/* Share Section com QR Code */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl border border-blue-200 p-4 sm:p-8 shadow-sm">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">📋 Compartilhe o Cardápio</h2>
-              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-6">Copie o link abaixo e compartilhe com seus clientes:</p>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
-                <input
-                  type="text"
-                  value={cardapioUrl}
-                  readOnly
-                  className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-blue-300 rounded-lg bg-white font-mono text-xs sm:text-sm"
-                />
-                <RippleButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(cardapioUrl);
-                    toast.success("Link copiado!");
-                  }}
-                  className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base"
-                >
-                  📋 Copiar
-                </RippleButton>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">📋 Compartilhe o Cardapio</h2>
+              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-6">Copie o link ou use o QR Code para compartilhar:</p>
+
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Link + Copiar */}
+                <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
+                    <input
+                      type="text"
+                      value={cardapioUrl}
+                      readOnly
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-blue-300 rounded-lg bg-white font-mono text-xs sm:text-sm"
+                    />
+                    <RippleButton
+                      onClick={() => {
+                        navigator.clipboard.writeText(cardapioUrl);
+                        toast.success("Link copiado!");
+                      }}
+                      className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base"
+                    >
+                      📋 Copiar Link
+                    </RippleButton>
+                  </div>
+                  <p className="text-xs sm:text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    💡 Imprima o QR Code e coloque no balcao para os clientes acessarem o cardapio!
+                  </p>
+                </div>
+
+                {/* QR Code */}
+                <div className="flex flex-col items-center gap-3">
+                  <div
+                    ref={qrCodeRef}
+                    className="bg-white p-4 rounded-xl shadow-md border border-blue-200"
+                  >
+                    {cardapioUrl && (
+                      <QRCodeSVG
+                        value={cardapioUrl}
+                        size={180}
+                        level="H"
+                        bgColor="#FFFFFF"
+                        fgColor="#7c4e42"
+                        imageSettings={logo ? {
+                          src: logo,
+                          x: undefined,
+                          y: undefined,
+                          height: 36,
+                          width: 36,
+                          excavate: true,
+                        } : undefined}
+                      />
+                    )}
+                  </div>
+                  <RippleButton
+                    onClick={handleDownloadQR}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg text-sm flex items-center gap-2"
+                  >
+                    <span>⬇️</span> Baixar QR Code
+                  </RippleButton>
+                </div>
               </div>
-              <p className="text-xs sm:text-sm text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                💡 Dica: Use um QR Code online para compartilhar com clientes!
-              </p>
+            </div>
+
+            {/* Horario de Funcionamento */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">🕐 Horario de Funcionamento</h2>
+                {!editingHorario ? (
+                  <RippleButton
+                    onClick={() => setEditingHorario(true)}
+                    className="bg-blue-100 text-blue-600 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-200 transition-all"
+                  >
+                    ✏️ Editar
+                  </RippleButton>
+                ) : (
+                  <div className="flex gap-2">
+                    <RippleButton
+                      onClick={handleSaveHorarios}
+                      disabled={savingHorario}
+                      className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-green-700 transition-all disabled:opacity-50"
+                    >
+                      {savingHorario ? "Salvando..." : "✓ Salvar"}
+                    </RippleButton>
+                    <RippleButton
+                      onClick={() => setEditingHorario(false)}
+                      className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-gray-300 transition-all"
+                    >
+                      ✕ Cancelar
+                    </RippleButton>
+                  </div>
+                )}
+              </div>
+
+              {editingHorario ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dias de semana</label>
+                    <input
+                      type="text"
+                      value={horarioSemana}
+                      onChange={(e) => setHorarioSemana(e.target.value)}
+                      placeholder="Ex: Seg a Sab: 5h30 - 20h30"
+                      className="w-full px-4 py-2.5 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Domingo / Feriados</label>
+                    <input
+                      type="text"
+                      value={horarioDomingo}
+                      onChange={(e) => setHorarioDomingo(e.target.value)}
+                      placeholder="Ex: Domingo: 5h30 - 13h30"
+                      className="w-full px-4 py-2.5 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">Essas informacoes aparecem no rodape do cardapio publico.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Dias de semana</p>
+                    <p className="text-base font-semibold text-gray-900">{horarioSemana}</p>
+                  </div>
+                  <div className="flex-1 bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Domingo / Feriados</p>
+                    <p className="text-base font-semibold text-gray-900">{horarioDomingo}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Stats */}

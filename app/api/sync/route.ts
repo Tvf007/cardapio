@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       ...existingCategoryIds,
     ].filter((id) => !newCategoryIds.has(id) && id !== "__hidden__");
     const productsToDelete = [...existingProductIds].filter(
-      (id) => !newProductIds.has(id) && id !== "__site_logo__"
+      (id) => !newProductIds.has(id) && id !== "__site_logo__" && !id.startsWith("__site_config_")
     );
 
     // Fase de deletação
