@@ -62,10 +62,19 @@ export async function GET() {
       image: normalizeImage(p.image),
     }));
 
-    return NextResponse.json({
+    // PERFORMANCE FIX: Adicionar cache headers para reduzir carga
+    const response = NextResponse.json({
       categories: validCategories,
       products: normalizedProducts,
     });
+
+    // Cache por 5 segundos no browser, permitir stale-while-revalidate por 30s
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=5, stale-while-revalidate=30"
+    );
+
+    return response;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);

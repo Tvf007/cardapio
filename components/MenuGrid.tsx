@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { MenuItem as MenuItemType, Category } from "@/lib/validation";
 import { MenuItem } from "./MenuItem";
 
@@ -6,7 +7,8 @@ interface MenuGridProps {
   categories?: Category[];
 }
 
-export function MenuGrid({ items, categories }: MenuGridProps) {
+// PERFORMANCE FIX: React.memo para evitar re-render do grid inteiro
+export const MenuGrid = memo(function MenuGrid({ items, categories }: MenuGridProps) {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -22,4 +24,4 @@ export function MenuGrid({ items, categories }: MenuGridProps) {
       ))}
     </div>
   );
-}
+});

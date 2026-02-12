@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { MenuItem as MenuItemType, Category } from "@/lib/validation";
 
 interface MenuItemProps {
@@ -31,10 +32,20 @@ function getCategoryName(categoryId: string, categories?: Category[]): string {
   return categories.find((c) => c.id === categoryId)?.name || "N/A";
 }
 
-export function MenuItem({ item, categories }: MenuItemProps) {
+// PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
+export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemProps) {
   const isNew = isNewProduct(item);
-  const categoryName = getCategoryName(item.category, categories);
-  const categoryColor = getCategoryColor(categoryName);
+
+  // PERFORMANCE FIX: useMemo para evitar recalcular em cada render
+  const categoryName = useMemo(
+    () => getCategoryName(item.category, categories),
+    [item.category, categories]
+  );
+
+  const categoryColor = useMemo(
+    () => getCategoryColor(categoryName),
+    [categoryName]
+  );
 
   return (
     <div
@@ -49,6 +60,7 @@ export function MenuItem({ item, categories }: MenuItemProps) {
             alt={item.name}
             className="menu-card-image w-full h-full object-contain bg-white"
             loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
@@ -106,4 +118,4 @@ export function MenuItem({ item, categories }: MenuItemProps) {
       </div>
     </div>
   );
-}
+});

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { MenuItem, Category } from "@/lib/validation";
-import { syncFromSupabase } from "@/lib/api";
+import { syncFromSupabase, localCache } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 interface BroadcastMessage {
@@ -10,6 +10,7 @@ interface BroadcastMessage {
   data?: {
     categories?: Category[];
     products?: MenuItem[];
+    logo?: string | null;
   };
   timestamp: number;
 }
@@ -24,33 +25,65 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-const POLL_INTERVAL = 10000; // Polling a cada 10 segundos (balanceado entre sync rápido e performance)
-const DEBOUNCE_DELAY = 1000; // Debounce de 1s para evitar requisições muito frequentes
+// PERFORMANCE FIX: Aumentar polling para 30s (Realtime cuida da sync rápida)
+const POLL_INTERVAL = 30000;
+const DEBOUNCE_DELAY = 800;
 
 export function useSyncedData(): SyncedDataState & {
   refresh: () => Promise<void>;
   setOptimisticData: (data: { categories?: Category[]; products?: MenuItem[] }) => void;
 } {
-  // Iniciar VAZIO - sem cache do localStorage para evitar flash de dados desatualizados
-  const [state, setState] = useState<SyncedDataState>({
-    categories: [],
-    products: [],
-    logo: null,
-    loading: true,
-    error: null,
-    lastSync: null,
-    realtimeConnected: false,
+  // PERFORMANCE FIX: Iniciar com dados do localStorage para evitar flash de loading
+  const [state, setState] = useState<SyncedDataState>(() => {
+    // Tentar carregar do localStorage para primeiro render instantâneo
+    if (typeof window !== "undefined") {
+      try {
+        const cachedCat = localStorage.getItem("cardapio-categories");
+        const cachedProd = localStorage.getItem("cardapio-products");
+        const cachedLogo = localStorage.getItem("padaria-logo");
+        const categories = cachedCat ? JSON.parse(cachedCat) : [];
+        const products = cachedProd ? JSON.parse(cachedProd) : [];
+
+        if (categories.length > 0 || products.length > 0) {
+          return {
+            categories,
+            products,
+            logo: cachedLogo || null,
+            loading: false, // Já temos dados em cache, não mostrar loading
+            error: null,
+            lastSync: null,
+            realtimeConnected: false,
+          };
+        }
+      } catch {
+        // Fallback para estado vazio
+      }
+    }
+
+    return {
+      categories: [],
+      products: [],
+      logo: null,
+      loading: true,
+      error: null,
+      lastSync: null,
+      realtimeConnected: false,
+    };
   });
 
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const isRefreshingRef = useRef(false); // Evitar refreshes simultâneos
 
-  const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[]) => {
+  const saveToLocalStorage = useCallback((categories: Category[], products: MenuItem[], logo: string | null) => {
     try {
       localStorage.setItem("cardapio-categories", JSON.stringify(categories));
       localStorage.setItem("cardapio-products", JSON.stringify(products));
+      if (logo) {
+        localStorage.setItem("padaria-logo", logo);
+      }
     } catch {
       // localStorage unavailable
     }
@@ -73,11 +106,11 @@ export function useSyncedData(): SyncedDataState & {
     return result;
   }, []);
 
-  const broadcastUpdate = useCallback((categories: Category[], products: MenuItem[]) => {
+  const broadcastUpdate = useCallback((categories: Category[], products: MenuItem[], logo: string | null) => {
     try {
       broadcastChannelRef.current?.postMessage({
         type: "sync",
-        data: { categories, products },
+        data: { categories, products, logo },
         timestamp: Date.now(),
       } as BroadcastMessage);
     } catch {
@@ -96,8 +129,20 @@ export function useSyncedData(): SyncedDataState & {
   const refresh = useCallback(async (retryCount = 0, maxRetries = 2) => {
     if (!mountedRef.current) return;
 
+    // PERFORMANCE FIX: Evitar refreshes simultâneos
+    if (isRefreshingRef.current && retryCount === 0) {
+      console.debug("[useSyncedData] Refresh já em andamento, ignorando");
+      return;
+    }
+
+    isRefreshingRef.current = true;
+
     try {
-      const data = await syncFromSupabase();
+      // CRITICAL FIX: Invalidar cache para garantir dados frescos do Supabase
+      // Isso é essencial para sincronização de logo entre dispositivos
+      localCache.invalidate("sync_data");
+
+      const data = await syncFromSupabase(undefined, { forceRefresh: true });
 
       if (!mountedRef.current) return;
 
@@ -111,9 +156,7 @@ export function useSyncedData(): SyncedDataState & {
         return true;
       });
 
-      // CRITICAL FIX: SEMPRE tentar fallback localStorage como backup
-      // Isso garante que se a logo foi salva localmente mas não sincronizou para Supabase,
-      // ela ainda será exibida
+      // Fallback localStorage apenas se Supabase não retornou logo
       if (!logo) {
         try {
           const fallbackLogo = localStorage.getItem("padaria-logo");
@@ -125,12 +168,11 @@ export function useSyncedData(): SyncedDataState & {
           console.warn("[useSyncedData] Erro ao acessar localStorage para fallback logo:", err);
         }
       } else {
-        // Se recebemos logo de Supabase, salvar também em localStorage para redundância
+        // Se recebemos logo de Supabase, salvar em localStorage para redundância
         try {
           localStorage.setItem("padaria-logo", logo);
-          console.info("[useSyncedData] Logo sincronizada e salva em localStorage");
-        } catch (err) {
-          console.warn("[useSyncedData] Erro ao salvar logo em localStorage:", err);
+        } catch {
+          // localStorage unavailable
         }
       }
 
@@ -144,14 +186,14 @@ export function useSyncedData(): SyncedDataState & {
         lastSync: new Date(),
       }));
 
-      saveToLocalStorage(data.categories, productsWithoutLogo);
-      broadcastUpdate(data.categories, productsWithoutLogo);
+      saveToLocalStorage(data.categories, productsWithoutLogo, logo);
+      broadcastUpdate(data.categories, productsWithoutLogo, logo);
     } catch (error) {
       if (!mountedRef.current) return;
 
       // Retry automático com backoff exponencial
       if (retryCount < maxRetries) {
-        const delayMs = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s...
+        const delayMs = Math.pow(2, retryCount) * 1000;
         console.warn(
           `[useSyncedData] Sincronização falhou. Tentando novamente em ${delayMs}ms... (tentativa ${retryCount + 1}/${maxRetries})`
         );
@@ -175,6 +217,8 @@ export function useSyncedData(): SyncedDataState & {
       }));
 
       console.error("[useSyncedData] Erro após múltiplas tentativas:", error);
+    } finally {
+      isRefreshingRef.current = false;
     }
   }, [saveToLocalStorage, loadFromLocalStorage, broadcastUpdate]);
 
@@ -190,36 +234,34 @@ export function useSyncedData(): SyncedDataState & {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Carregar dados do Supabase imediatamente
+    // Carregar dados do Supabase imediatamente (em background se já temos cache)
     refresh();
 
     // BroadcastChannel para sync entre abas DO MESMO DISPOSITIVO
-    // Nota: BroadcastChannel não funciona entre dispositivos diferentes
-    // Dependemos de Realtime + Polling para sincronização entre devices
     try {
       broadcastChannelRef.current = new BroadcastChannel("cardapio-sync");
       broadcastChannelRef.current.onmessage = (event: MessageEvent<BroadcastMessage>) => {
         if (event.data.type === "sync" && event.data.data) {
-          const { categories, products } = event.data.data;
+          const { categories, products, logo } = event.data.data;
           setState((prev) => ({
             ...prev,
             categories: categories || prev.categories,
             products: products || prev.products,
+            logo: logo !== undefined ? logo : prev.logo,
           }));
         }
       };
     } catch {
-      // BroadcastChannel not supported - não crítico pois temos Realtime
+      // BroadcastChannel not supported
     }
 
-    // Supabase Realtime - Usar debounce em ambos para evitar requisições duplicadas
+    // Supabase Realtime - escuta mudanças no banco
     const channel = supabase
       .channel("cardapio-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
         () => {
-          // Sincronização com debounce para evitar múltiplas requisições
           debouncedRefresh();
         }
       )
@@ -227,7 +269,7 @@ export function useSyncedData(): SyncedDataState & {
         "postgres_changes",
         { event: "*", schema: "public", table: "menu_items" },
         () => {
-          // Sincronização com debounce (1s)
+          // Quando menu_items muda (incluindo logo!), refresh com debounce
           debouncedRefresh();
         }
       )
@@ -236,10 +278,17 @@ export function useSyncedData(): SyncedDataState & {
           setState((prev) => ({ ...prev, realtimeConnected: true }));
           console.info("[useSyncedData] Realtime conectado com sucesso");
         }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setState((prev) => ({ ...prev, realtimeConnected: false }));
+          console.warn("[useSyncedData] Realtime desconectado, dependendo do polling");
+        }
       });
 
-    // Polling a cada 30s
-    pollIntervalRef.current = setInterval(refresh, POLL_INTERVAL);
+    // PERFORMANCE FIX: Polling a cada 30s (antes era 10s)
+    // Realtime cuida das mudanças em tempo real, polling é backup
+    pollIntervalRef.current = setInterval(() => {
+      refresh();
+    }, POLL_INTERVAL);
 
     return () => {
       mountedRef.current = false;

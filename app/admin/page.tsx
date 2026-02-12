@@ -137,6 +137,17 @@ export default function AdminPage() {
 
           const responseData = await response.json();
           console.info("[Logo Upload] Successfully synced to server", responseData);
+
+          // CRITICAL FIX: Forçar refresh do contexto para que o logo
+          // seja buscado do Supabase e sincronizado em TODOS os dispositivos
+          // Sem isso, o logo só aparece localmente via localStorage
+          try {
+            await cardapio.refresh();
+            console.info("[Logo Upload] Contexto atualizado com sucesso após upload");
+          } catch (refreshError) {
+            console.warn("[Logo Upload] Erro ao atualizar contexto (logo salvo no servidor):", refreshError);
+          }
+
           toast.success("Logo atualizado com sucesso!");
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : "Erro desconhecido";

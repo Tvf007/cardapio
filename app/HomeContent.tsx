@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
 import { CategoryFilter, MenuGrid, MenuGridSkeleton } from "@/components";
 import { useCardapio } from "@/contexts/CardapioContext";
@@ -10,32 +10,14 @@ const INSTAGRAM_URL = "https://www.instagram.com/padariaeconfeitariafreitas";
 
 export function HomeContent() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [fallbackLogo, setFallbackLogo] = useState<string | null>(null);
   const hasAutoSelected = useRef(false);
   const cardapio = useCardapio();
 
   const categories = cardapio.categories;
   const menuItems = cardapio.products;
-  // CRITICAL: Usar logo do contexto OU fallback de localStorage se contexto não tiver
-  const displayLogo = cardapio.logo || fallbackLogo;
-
-  // CRITICAL: Carregar fallback logo de localStorage se não tiver no contexto
-  useEffect(() => {
-    if (!cardapio.logo) {
-      try {
-        const savedLogo = localStorage.getItem("padaria-logo");
-        if (savedLogo) {
-          setFallbackLogo(savedLogo);
-          console.info("[HomeContent] Logo carregada de localStorage (fallback)");
-        }
-      } catch (err) {
-        console.warn("[HomeContent] Erro ao acessar localStorage:", err);
-      }
-    } else if (cardapio.logo && fallbackLogo !== cardapio.logo) {
-      // Se contexto tem logo e é diferente do fallback, usar a do contexto
-      setFallbackLogo(cardapio.logo);
-    }
-  }, [cardapio.logo]);
+  // CRITICAL FIX: Logo vem diretamente do contexto sincronizado (Supabase)
+  // O useSyncedData já cuida do fallback localStorage internamente
+  const displayLogo = cardapio.logo;
 
   // Selecionar a primeira categoria automaticamente quando os dados carregam
   useEffect(() => {
@@ -45,9 +27,19 @@ export function HomeContent() {
     }
   }, [categories]);
 
-  const filteredItems = activeCategory
-    ? menuItems.filter((item) => item.category === activeCategory)
-    : menuItems;
+  // PERFORMANCE FIX: Memoizar filtragem para evitar recalcular a cada render
+  const filteredItems = useMemo(
+    () =>
+      activeCategory
+        ? menuItems.filter((item) => item.category === activeCategory)
+        : menuItems,
+    [activeCategory, menuItems]
+  );
+
+  // PERFORMANCE FIX: Memoizar callback de mudança de categoria
+  const handleCategoryChange = useCallback((categoryId: string | null) => {
+    setActiveCategory(categoryId);
+  }, []);
 
   const currentYear = new Date().getFullYear();
 
@@ -190,7 +182,7 @@ export function HomeContent() {
           <CategoryFilter
             categories={categories}
             activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
+            onCategoryChange={handleCategoryChange}
           />
         </div>
 

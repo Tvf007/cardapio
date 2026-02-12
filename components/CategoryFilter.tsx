@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { Category } from "@/lib/validation";
 
 interface CategoryFilterProps {
@@ -6,15 +7,18 @@ interface CategoryFilterProps {
   onCategoryChange: (categoryId: string | null) => void;
 }
 
-export function CategoryFilter({
+// PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
+export const CategoryFilter = memo(function CategoryFilter({
   categories,
   activeCategory,
   onCategoryChange,
 }: CategoryFilterProps) {
+  const handleAll = useCallback(() => onCategoryChange(null), [onCategoryChange]);
+
   return (
     <div className="flex gap-3 overflow-x-auto pb-4 mb-8 scrollbar-hide">
       <button
-        onClick={() => onCategoryChange(null)}
+        onClick={handleAll}
         className={`category-btn px-6 py-3 rounded-full font-semibold whitespace-nowrap flex-shrink-0 border-2 shadow-sm text-sm ${
           activeCategory === null
             ? "active bg-[#7c4e42] border-[#7c4e42] text-white shadow-lg"
@@ -41,4 +45,4 @@ export function CategoryFilter({
       })}
     </div>
   );
-}
+});
