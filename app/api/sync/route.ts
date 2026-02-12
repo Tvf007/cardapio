@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { validateArray, MenuItemSchema, CategorySchema } from "@/lib/validation";
+import { requireAdmin } from "@/lib/authGuard";
 
 // Funções auxiliares para normalização
 function normalizePrice(price: unknown): number {
@@ -99,6 +100,10 @@ function checkDuplicateCategoryNames(
 }
 
 export async function POST(request: NextRequest) {
+  // SECURITY: Verificar autenticação admin antes de permitir modificações
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     let { products = [], categories = [] } = body as {

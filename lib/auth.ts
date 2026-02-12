@@ -1,4 +1,10 @@
-import { supabase } from "./supabase";
+/**
+ * Auth Client - Funções de autenticação do lado do cliente
+ *
+ * SECURITY: Toda verificação de senha acontece no servidor.
+ * O cliente apenas envia a senha via HTTPS e recebe um cookie HTTP-only com JWT.
+ * Nenhum hash ou token é exposto ao JavaScript do browser.
+ */
 
 export interface AuthUser {
   id: string;
@@ -6,132 +12,102 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-const ADMIN_PASSWORD_HASH = process.env.NEXT_PUBLIC_ADMIN_PASSWORD_HASH;
-
-// SHA-256 usando Web Crypto API (funciona no browser, sem Node.js crypto)
-async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
+/**
+ * Login com senha - envia para o servidor que verifica e retorna cookie JWT
+ */
+export async function loginWithPassword(
+  password: string
+): Promise<{ user: AuthUser | null; error: string | null }> {
   try {
-    const passwordHash = await sha256(password);
-    return passwordHash === hash;
-  } catch (error) {
-    console.error("Erro ao verificar senha:", error);
-    return false;
-  }
-}
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+      credentials: "include", // CRITICAL: Enviar/receber cookies HTTP-only
+    });
 
-export async function loginWithPassword(password: string): Promise<{ user: AuthUser | null; error: string | null }> {
-  try {
-    if (!ADMIN_PASSWORD_HASH) {
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Rate limiting
+      if (response.status === 429) {
+        return {
+          user: null,
+          error: data.error || "Muitas tentativas. Aguarde um momento.",
+        };
+      }
       return {
         user: null,
-        error: "Autenticacao nao configurada. Defina NEXT_PUBLIC_ADMIN_PASSWORD_HASH",
+        error: data.error || "Senha incorreta",
       };
     }
 
-    const isValid = await verifyPassword(password, ADMIN_PASSWORD_HASH);
-    if (isValid) {
-      const user: AuthUser = {
-        id: "admin-001",
-        email: "admin@cardapio.local",
-        isAdmin: true,
-      };
-      if (typeof window !== "undefined") {
-        localStorage.setItem("admin-user", JSON.stringify(user));
-      }
-      return { user, error: null };
+    if (data.user) {
+      return { user: data.user as AuthUser, error: null };
     }
 
-    return { user: null, error: "Senha incorreta" };
+    return { user: null, error: "Resposta inesperada do servidor" };
   } catch (error) {
-    return { user: null, error: error instanceof Error ? error.message : "Erro ao fazer login" };
+    console.error("[Auth] Erro no login:", error);
+    return {
+      user: null,
+      error: error instanceof Error ? error.message : "Erro de conexão",
+    };
   }
 }
 
+/**
+ * Logout - limpa o cookie JWT no servidor
+ */
 export async function logout(): Promise<{ error: string | null }> {
   try {
+    const response = await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include", // CRITICAL: Enviar cookie para o servidor limpar
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { error: data.error || "Erro ao fazer logout" };
+    }
+
+    // Limpar dados locais de sessão (se houver)
     if (typeof window !== "undefined") {
       localStorage.removeItem("admin-user");
     }
-    const { error } = await supabase.auth.signOut();
-    return { error: error?.message || null };
+
+    return { error: null };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Erro ao fazer logout" };
+    console.error("[Auth] Erro no logout:", error);
+    return {
+      error: error instanceof Error ? error.message : "Erro de conexão",
+    };
   }
 }
 
-function isValidAuthUser(obj: unknown): obj is AuthUser {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "id" in obj &&
-    "email" in obj &&
-    "isAdmin" in obj &&
-    typeof (obj as Record<string, unknown>).id === "string" &&
-    typeof (obj as Record<string, unknown>).email === "string" &&
-    typeof (obj as Record<string, unknown>).isAdmin === "boolean"
-  );
-}
-
+/**
+ * Verifica se o usuário está logado via cookie JWT
+ */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
-    if (typeof window === "undefined") return null;
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "include", // CRITICAL: Enviar cookie JWT
+    });
 
-    const savedUser = localStorage.getItem("admin-user");
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        if (isValidAuthUser(parsedUser)) {
-          return parsedUser;
-        }
-        localStorage.removeItem("admin-user");
-      } catch {
-        localStorage.removeItem("admin-user");
-      }
-    }
-
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+    if (!response.ok) {
       return null;
     }
 
-    return {
-      id: data.user.id,
-      email: data.user.email || "",
-      isAdmin: true,
-    };
-  } catch {
+    const data = await response.json();
+
+    if (data.user && data.user.isAdmin) {
+      return data.user as AuthUser;
+    }
+
     return null;
-  }
-}
-
-export async function signUpAdmin(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
-  try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-
-    if (error) {
-      return { user: null, error: error.message };
-    }
-
-    if (!data.user) {
-      return { user: null, error: "Erro ao criar usuario" };
-    }
-
-    return {
-      user: {
-        id: data.user.id,
-        email: data.user.email || "",
-        isAdmin: true,
-      },
-      error: null,
-    };
-  } catch (error) {
-    return { user: null, error: error instanceof Error ? error.message : "Erro ao registrar" };
+  } catch {
+    // Silenciosamente retorna null em caso de erro de rede
+    return null;
   }
 }

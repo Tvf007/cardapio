@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { localCache } from "@/lib/api";
+import { requireAdmin } from "@/lib/authGuard";
 
 const LOGO_ID = "__site_logo__";
 
@@ -23,8 +24,12 @@ export async function GET() {
   }
 }
 
-// POST /api/logo - salvar logo
+// POST /api/logo - salvar logo (PROTEGIDO - requer autenticação admin)
 export async function POST(request: NextRequest) {
+  // SECURITY: Verificar autenticação admin
+  const authError = await requireAdmin(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { logo } = body as { logo: string | null };

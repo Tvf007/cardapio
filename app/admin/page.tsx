@@ -124,6 +124,7 @@ export default function AdminPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ logo: result }),
+            credentials: "include", // SECURITY: Enviar cookie JWT para autenticação
           });
 
           // CRITICAL FIX: Verify HTTP response before showing success

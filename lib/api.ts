@@ -437,6 +437,7 @@ async function executeSyncTo(
             products: productsWithTimestamp,
             categories: sanitizedData.categories,
           }),
+          credentials: "include", // SECURITY: Enviar cookie JWT para autenticação admin
           externalSignal: signal,
         });
 
