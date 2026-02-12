@@ -4,6 +4,7 @@ import { z } from "zod";
 export const CategorySchema = z.object({
   id: z.string().min(1, "ID da categoria é obrigatório"),
   name: z.string().min(1, "Nome da categoria é obrigatório"),
+  order: z.coerce.number().optional().default(0),
   created_at: z.string().optional(),
 });
 

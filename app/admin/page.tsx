@@ -289,6 +289,7 @@ export default function AdminPage() {
       const newCategory: Category = {
         id: uuid(),
         name: newCategoryName.trim(),
+        order: cardapio.categories.length, // Adicionar no final
       };
 
       await cardapio.addCategory(newCategory);
@@ -306,9 +307,11 @@ export default function AdminPage() {
     }
 
     try {
+      const existingCat = cardapio.categories.find((c) => c.id === categoryId);
       const updatedCategory: Category = {
         id: categoryId,
         name: editingCategoryName.trim(),
+        order: existingCat?.order ?? 0,
       };
 
       await cardapio.updateCategory(updatedCategory);
@@ -317,6 +320,27 @@ export default function AdminPage() {
       toast.success("Categoria atualizada com sucesso!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar categoria");
+    }
+  };
+
+  const handleMoveCategory = async (categoryId: string, direction: "up" | "down") => {
+    const cats = [...cardapio.categories];
+    const index = cats.findIndex((c) => c.id === categoryId);
+    if (index === -1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= cats.length) return;
+
+    // Trocar posições
+    [cats[index], cats[targetIndex]] = [cats[targetIndex], cats[index]];
+
+    // Atribuir order e salvar
+    const reordered = cats.map((c, i) => ({ ...c, order: i }));
+    try {
+      await cardapio.reorderCategories(reordered);
+      toast.success("Ordem atualizada!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
     }
   };
 
@@ -660,7 +684,7 @@ export default function AdminPage() {
                 {cardapio.categories.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">Nenhuma categoria criada ainda</p>
                 ) : (
-                  cardapio.categories.map((category) => (
+                  cardapio.categories.map((category, index) => (
                     <div
                       key={category.id}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all gap-3 sm:gap-0"
@@ -690,11 +714,32 @@ export default function AdminPage() {
                         </>
                       ) : (
                         <>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{category.name}</h3>
-                            <p className="text-xs text-gray-500">ID: {category.id}</p>
+                          {/* Botoes de reordenação + info */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex flex-col gap-0.5 flex-shrink-0">
+                              <button
+                                onClick={() => handleMoveCategory(category.id, "up")}
+                                disabled={index === 0}
+                                className="w-7 h-7 flex items-center justify-center rounded bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+                                title="Mover para cima"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                onClick={() => handleMoveCategory(category.id, "down")}
+                                disabled={index === cardapio.categories.length - 1}
+                                className="w-7 h-7 flex items-center justify-center rounded bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
+                                title="Mover para baixo"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                            <span className="text-xs font-bold text-gray-400 w-5 text-center flex-shrink-0">{index + 1}</span>
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{category.name}</h3>
+                            </div>
                           </div>
-                          <div className="flex gap-2 w-full sm:w-auto">
+                          <div className="flex gap-2 w-full sm:w-auto flex-shrink-0">
                             <RippleButton
                               onClick={() => {
                                 setEditingCategoryId(category.id);

@@ -22,6 +22,7 @@ interface CardapioContextType {
   updateCategory: (category: Category) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
+  reorderCategories: (reorderedCategories: Category[]) => Promise<void>;
   syncToCloud: () => Promise<void>;
 }
 
@@ -181,6 +182,26 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
     [syncedData]
   );
 
+  const reorderCategories = useCallback(
+    async (reorderedCategories: Category[]) => {
+      const previousCategories = syncedData.categories;
+      // Atribuir order baseado na posição no array
+      const withOrder = reorderedCategories.map((c, index) => ({
+        ...c,
+        order: index,
+      }));
+      syncedData.setOptimisticData({ categories: withOrder });
+
+      try {
+        await syncToSupabase(syncedData.products, withOrder);
+      } catch (error) {
+        syncedData.setOptimisticData({ categories: previousCategories });
+        throw error;
+      }
+    },
+    [syncedData]
+  );
+
   const syncToCloud = useCallback(async () => {
     try {
       const validCats = getValidCategories(syncedData.categories);
@@ -207,6 +228,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         updateCategory,
         deleteCategory,
         addCategory,
+        reorderCategories,
         syncToCloud,
       }}
     >

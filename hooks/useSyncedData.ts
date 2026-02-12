@@ -63,7 +63,12 @@ function filterSystemItems(
     return true;
   });
 
-  return { categories: visibleCategories, products: visibleProducts, logo };
+  // Ordenar categorias pelo campo order (menor primeiro)
+  const sortedCategories = [...visibleCategories].sort(
+    (a, b) => (a.order ?? 999) - (b.order ?? 999)
+  );
+
+  return { categories: sortedCategories, products: visibleProducts, logo };
 }
 
 export function useSyncedData(): SyncedDataState & {
