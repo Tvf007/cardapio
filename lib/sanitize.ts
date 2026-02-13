@@ -28,10 +28,10 @@ export function sanitizeCategory(category: any): Category {
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
-    // CRÍTICO: Sempre incluir order, mesmo que undefined
-    // O Zod vai aplicar o default(0) apenas se for undefined
-    // Mas se enviamos um número, esse número é mantido
-    ...(typeof order === "number" ? { order } : { order: undefined }),
+    // CRÍTICO: SÓ incluir order se for um número válido
+    // JSON.stringify remove undefined, então nunca enviaríamos se usássemos undefined
+    // Sempre enviamos o número (0, 1, 2, etc) ou nada
+    ...(typeof order === "number" && { order }),
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
