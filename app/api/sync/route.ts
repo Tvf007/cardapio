@@ -140,12 +140,6 @@ export async function POST(request: NextRequest) {
     // Filtrar categorias inválidas
     const validCategories = filterValidCategories(categories);
 
-    // DEBUG: Log received data
-    console.log("[SYNC POST] Received categories with order values:");
-    validCategories.forEach((cat: any) => {
-      console.log(`  - id=${cat.id}, name=${cat.name}, order=${cat.order}, typeof(order)=${typeof cat.order}`);
-    });
-
     // Validar dados antes de salvar
     try {
       if (validCategories.length > 0) {
