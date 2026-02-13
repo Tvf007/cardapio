@@ -92,8 +92,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         // Sem timeout extra aqui para não criar camadas desnecessárias
         await syncToSupabase(optimisticProducts, validCats);
 
-        // Realtime listener cuidará da sincronização automática
-        // Force refresh removido para evitar refresh em cascata
+        // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
+        // Delay mínimo (100ms) permite que o backend processe antes do fetch
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 100);
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -197,9 +200,12 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         // Sem timeout extra aqui para não criar camadas desnecessárias
         await syncToSupabase(syncedData.products, withOrder);
 
-        // Realtime listener cuidará da sincronização automática entre dispositivos
-        // Force refresh removido para evitar cascata de refreshes
-        // O debounce do Realtime (200ms) é suficiente para propagação de mudanças
+        // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
+        // Delay mínimo (100ms) permite que o backend processe antes do fetch
+        // Sem isso, o cache local fica desatualizado e impede persistência de mudanças
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 100);
       } catch (error) {
         syncedData.setOptimisticData({ categories: previousCategories });
         throw error;
