@@ -24,7 +24,9 @@ export function sanitizeCategory(category: any): Category {
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
-    ...(typeof order === "number" && { order }),
+    // CRÍTICO: Incluir order sempre, mesmo que seja 0 ou undefined
+    // Isso garante que o campo é enviado no upsert
+    order: typeof order === "number" ? order : undefined,
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
