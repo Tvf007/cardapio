@@ -14,10 +14,17 @@ export function sanitizeCategory(category: any): Category {
     throw new Error("Categoria inválida");
   }
 
+  // Garantir que order é sempre um número (coerce from string if needed)
+  const order = typeof category.order === "number"
+    ? category.order
+    : typeof category.order === "string"
+    ? parseInt(category.order, 10)
+    : undefined;
+
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
-    ...(typeof category.order === "number" && { order: category.order }),
+    ...(typeof order === "number" && { order }),
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
