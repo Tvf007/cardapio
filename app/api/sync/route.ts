@@ -216,10 +216,14 @@ export async function POST(request: NextRequest) {
 
     // Fase de upsert
     if (validCategories.length > 0) {
+      console.log("[SYNC] Upserting categories:", validCategories.map((c: any) => ({id: c.id, name: c.name, order: c.order})));
       const { error } = await supabase
         .from("categories")
         .upsert(validCategories, { onConflict: "id" });
-      if (error) throw error;
+      if (error) {
+        console.error("[SYNC] Upsert error:", error);
+        throw error;
+      }
     }
 
     if (products.length > 0) {
