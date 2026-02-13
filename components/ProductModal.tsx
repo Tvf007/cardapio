@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
+import Image from "next/image";
 import { MenuItem, Category } from "@/lib/validation";
 
 interface ProductModalProps {
@@ -87,10 +88,14 @@ export function ProductModal({
         {/* Imagem */}
         <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden">
           {item.image && item.image.trim() !== "" ? (
-            <img
+            <Image
               src={item.image}
               alt={item.name}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect fill='%23fef3c7' width='400' height='300'/%3E%3C/svg%3E"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-amber-300">

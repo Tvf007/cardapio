@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import Image from "next/image";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
 import { CategoryFilter, MenuGrid, MenuGridSkeleton } from "@/components";
+import { DarkModeToggle } from "@/components/DarkModeToggle";
 import { useCardapio } from "@/contexts/CardapioContext";
 
 const WHATSAPP_URL = "https://wa.me/5527997835980";
@@ -138,11 +140,13 @@ export function HomeContent() {
       <header className="header-banner">
         {/* Imagem de capa (logo como background sutil) */}
         {displayLogo && (
-          <img
+          <Image
             src={displayLogo}
             alt=""
-            className="header-cover-image"
+            fill
+            className="header-cover-image object-cover"
             aria-hidden="true"
+            quality={30}
           />
         )}
 
@@ -151,9 +155,14 @@ export function HomeContent() {
             {/* Logo circular estilo rede social */}
             <div className="logo-circle">
               {displayLogo ? (
-                <img
+                <Image
                   src={displayLogo}
                   alt="Logo Padaria Freitas"
+                  fill
+                  className="object-cover"
+                  priority
+                  placeholder="blur"
+                  blurDataURL="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 88 88'%3E%3Crect fill='%23d97706' width='88' height='88'/%3E%3C/svg%3E"
                 />
               ) : (
                 <span className="text-4xl">🍞</span>
@@ -190,11 +199,14 @@ export function HomeContent() {
                 <div key={item.id} className="highlight-card">
                   <div className="relative h-36 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden">
                     {item.image && item.image.trim() !== "" ? (
-                      <img
+                      <Image
                         src={item.image}
                         alt={item.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
                         loading="lazy"
+                        placeholder="blur"
+                        blurDataURL="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 144'%3E%3Crect fill='%23fef3c7' width='200' height='144'/%3E%3C/svg%3E"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-amber-300">
@@ -288,10 +300,11 @@ export function HomeContent() {
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-6 text-center">
+          <div className="border-t border-white/10 pt-6 flex items-center justify-between">
             <p className="text-gray-500 text-xs">
               &copy; {currentYear} Padaria Freitas. Todos os direitos reservados.
             </p>
+            <DarkModeToggle />
           </div>
         </div>
       </footer>

@@ -3,6 +3,21 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 
+  // PERFORMANCE: Otimização de imagens com Next.js Image
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Cache de imagens otimizadas por 365 dias
+    minimumCacheTTL: 60,
+  },
+
   // PERFORMANCE: Otimizar pacotes importados para tree-shaking
   experimental: {
     optimizePackageImports: ["react-icons"],

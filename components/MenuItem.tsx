@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo, useState, useCallback } from "react";
+import Image from "next/image";
 import { MenuItem as MenuItemType, Category } from "@/lib/validation";
 import { ProductModal } from "./ProductModal";
 
@@ -77,14 +78,18 @@ export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemPro
         style={{ opacity: isUnavailable ? 0.6 : 1 }}
       >
         {/* Imagem */}
-        <div className="card-image-mobile relative bg-gradient-to-br from-amber-50 to-orange-50 flex-shrink-0">
+        <div className="card-image-mobile relative bg-gradient-to-br from-amber-50 to-orange-50 flex-shrink-0 overflow-hidden">
           {item.image && item.image.trim() !== "" ? (
-            <img
+            <Image
               src={item.image}
               alt={item.name}
+              width={200}
+              height={200}
               className="menu-card-image w-full h-full object-cover"
               loading="lazy"
               decoding="async"
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23fef3c7' width='200' height='200'/%3E%3C/svg%3E"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-amber-300">
