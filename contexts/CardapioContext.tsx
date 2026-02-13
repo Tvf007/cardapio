@@ -89,10 +89,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         const validCats = getValidCategories(syncedData.categories);
 
         // TIMEOUT PROTECTION: Ensure syncToSupabase completes or times out
+        // Increased to 35 seconds to match the 30s timeout in syncToSupabase + buffer
         const timeoutPromise = new Promise<void>((_, reject) => {
           const timeoutId = setTimeout(() => {
             reject(new Error("Operação de salvamento expirou. Por favor, tente novamente."));
-          }, 15000); // 15 second timeout
+          }, 35000); // 35 second timeout
         });
 
         await Promise.race([
@@ -205,10 +206,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
       try {
         // TIMEOUT PROTECTION: Ensure syncToSupabase completes or times out
+        // Increased to 35 seconds to match the 30s timeout in syncToSupabase + buffer
         const timeoutPromise = new Promise<void>((_, reject) => {
           const timeoutId = setTimeout(() => {
-            reject(new Error("Reorder operation timed out"));
-          }, 15000); // 15 second timeout
+            reject(new Error("Operação de reordenação expirou. Verifique sua conexão e tente novamente."));
+          }, 35000); // 35 second timeout
         });
 
         await Promise.race([

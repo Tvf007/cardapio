@@ -370,10 +370,12 @@ export async function syncToSupabase(
   });
 
   // TIMEOUT PROTECTION: Garantir que a Promise sempre resolve ou rejeita
+  // Aumentado para 30 segundos para permitir retries com backoff exponencial
+  // Cálculo: 3 tentativas × 5s cada + delays (1s + 2s + 4s) = ~20-22s total esperado
   const timeoutPromise = new Promise<void>((_, reject) => {
     const timeoutId = setTimeout(() => {
-      reject(new Error("Sync operation timed out after 15 seconds"));
-    }, 15000); // 15 segundo timeout
+      reject(new Error("Operação de sincronização expirou após 30 segundos. Verifique sua conexão e tente novamente."));
+    }, 30000); // 30 segundo timeout
   });
 
   try {
@@ -395,7 +397,7 @@ export async function syncToSupabase(
             {
               payload: { products, categories },
               priority: "high",
-              maxRetries: 3,
+              maxRetries: 2, // Reduzido de 3 para 2 (deixa margem de tempo)
               skipDeduplication: true, // Writes sempre devem executar
             }
           );

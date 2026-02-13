@@ -145,10 +145,11 @@ export function ProductForm({
 
     try {
       // TIMEOUT PROTECTION: Add a timeout to prevent indefinite loading
+      // Increased to 40 seconds to allow for retries in syncToSupabase (30s) + processing
       const timeoutPromise = new Promise<void>((_, reject) => {
         const timeoutId = setTimeout(() => {
-          reject(new Error("Operação de salvamento expirou (timeout). Por favor, tente novamente."));
-        }, 20000); // 20 segundo timeout
+          reject(new Error("Operação de salvamento expirou. Verifique sua conexão de internet e tente novamente."));
+        }, 40000); // 40 segundo timeout
 
         // Clean up timeout if operation completes successfully
         return () => clearTimeout(timeoutId);
