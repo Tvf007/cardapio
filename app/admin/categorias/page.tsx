@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { v4 as uuid } from "uuid";
 import { RippleButton } from "@/components/RippleButton";
 import { useCardapio } from "@/contexts/CardapioContext";
@@ -13,6 +13,7 @@ export default function CategoriasPage() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const cardapio = useCardapio();
   const toast = useToast();
+  const moveOperationInProgressRef = useRef(false);
 
   const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) {
@@ -68,6 +69,13 @@ export default function CategoriasPage() {
 
   const handleMoveCategory = useCallback(
     async (categoryId: string, direction: "up" | "down") => {
+      // RACE CONDITION FIX: Prevent multiple concurrent reorder operations
+      // This prevents the rapid clicking issue where categories revert to previous position
+      if (moveOperationInProgressRef.current) {
+        toast.error("Operação anterior ainda está sendo processada. Aguarde...");
+        return;
+      }
+
       const cats = [...cardapio.categories];
       const index = cats.findIndex((c) => c.id === categoryId);
       if (index === -1) return;
@@ -81,9 +89,12 @@ export default function CategoriasPage() {
       // Atribuir order e salvar
       const reordered = cats.map((c, i) => ({ ...c, order: i }));
       try {
+        moveOperationInProgressRef.current = true;
         await cardapio.reorderCategories(reordered);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
+      } finally {
+        moveOperationInProgressRef.current = false;
       }
     },
     [cardapio, toast]

@@ -141,11 +141,31 @@ export function ProductForm({
     }
 
     setIsSubmitting(true);
+    setError(null);
 
     try {
-      await onSubmit(formData);
+      // TIMEOUT PROTECTION: Add a timeout to prevent indefinite loading
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error("Operação de salvamento expirou (timeout). Por favor, tente novamente."));
+        }, 20000); // 20 segundo timeout
+
+        // Clean up timeout if operation completes successfully
+        return () => clearTimeout(timeoutId);
+      });
+
+      // Race the submit operation against the timeout
+      await Promise.race([
+        onSubmit(formData),
+        timeoutPromise,
+      ]);
+
+      // If successful, call onCancel to close form/modal
+      onCancel();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar produto");
+      const errorMessage = err instanceof Error ? err.message : "Erro ao salvar produto";
+      setError(errorMessage);
+      console.error("[ProductForm] Erro ao salvar:", err);
     } finally {
       setIsSubmitting(false);
     }

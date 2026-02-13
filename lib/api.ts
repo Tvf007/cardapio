@@ -369,33 +369,53 @@ export async function syncToSupabase(
     categoriesCount: categories.length,
   });
 
-  // Usar mutex para garantir sequenciamento
-  await crudMutex.withLock(async () => {
-    // Se skipQueue, executar direto
-    if (options?.skipQueue) {
-      await executeSyncTo(products, categories, options?.signal, onProgress);
-      return;
-    }
-
-    // Enfileirar requisicao com prioridade alta (operacao de escrita)
-    const result = await requestQueue.enqueue(
-      "sync_to",
-      async (signal) => executeSyncTo(products, categories, signal, onProgress),
-      {
-        payload: { products, categories },
-        priority: "high",
-        maxRetries: 3,
-        skipDeduplication: true, // Writes sempre devem executar
-      }
-    );
-
-    if (!result.success) {
-      throw result.error || new Error("Sync to failed");
-    }
+  // TIMEOUT PROTECTION: Garantir que a Promise sempre resolve ou rejeita
+  const timeoutPromise = new Promise<void>((_, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("Sync operation timed out after 15 seconds"));
+    }, 15000); // 15 segundo timeout
   });
 
-  // Invalidar cache apos escrita bem-sucedida
-  localCache.invalidate("sync_data");
+  try {
+    // Race against timeout
+    await Promise.race([
+      (async () => {
+        // Usar mutex para garantir sequenciamento
+        await crudMutex.withLock(async () => {
+          // Se skipQueue, executar direto
+          if (options?.skipQueue) {
+            await executeSyncTo(products, categories, options?.signal, onProgress);
+            return;
+          }
+
+          // Enfileirar requisicao com prioridade alta (operacao de escrita)
+          const result = await requestQueue.enqueue(
+            "sync_to",
+            async (signal) => executeSyncTo(products, categories, signal, onProgress),
+            {
+              payload: { products, categories },
+              priority: "high",
+              maxRetries: 3,
+              skipDeduplication: true, // Writes sempre devem executar
+            }
+          );
+
+          if (!result.success) {
+            throw result.error || new Error("Sync to failed");
+          }
+        });
+      })(),
+      timeoutPromise,
+    ]);
+
+    // Invalidar cache apos escrita bem-sucedida
+    localCache.invalidate("sync_data");
+  } catch (error) {
+    logger.error("API", "syncToSupabase failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
 
 /**
