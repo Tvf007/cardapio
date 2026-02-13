@@ -88,15 +88,12 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         const validCats = getValidCategories(syncedData.categories);
 
-        // O timeout agora está em syncToSupabase (15s)
+        // O timeout agora está em syncToSupabase (30s)
         // Sem timeout extra aqui para não criar camadas desnecessárias
         await syncToSupabase(optimisticProducts, validCats);
 
-        // IMPORTANTE: Forçar refresh imediato para sincronização entre dispositivos
-        // Sem isso, outros dispositivos precisam aguardar o polling (10s)
-        setTimeout(() => {
-          syncedData.refresh();
-        }, 500);
+        // Realtime listener cuidará da sincronização automática
+        // Force refresh removido para evitar refresh em cascata
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -196,17 +193,13 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       syncedData.setOptimisticData({ categories: withOrder });
 
       try {
-        // O timeout agora está em syncToSupabase (15s)
+        // O timeout agora está em syncToSupabase (30s)
         // Sem timeout extra aqui para não criar camadas desnecessárias
         await syncToSupabase(syncedData.products, withOrder);
 
-        // IMPORTANTE: Forçar refresh imediato para garantir sincronização entre dispositivos
-        // e evitar revert automático pelos listeners de Realtime/polling
-        // Delay de 800ms (aumentado de 500ms) permite que a sincronização com Supabase seja processada
-        // e evita conflito com o debounce do Realtime listener (200ms)
-        setTimeout(() => {
-          syncedData.refresh();
-        }, 800);
+        // Realtime listener cuidará da sincronização automática entre dispositivos
+        // Force refresh removido para evitar cascata de refreshes
+        // O debounce do Realtime (200ms) é suficiente para propagação de mudanças
       } catch (error) {
         syncedData.setOptimisticData({ categories: previousCategories });
         throw error;

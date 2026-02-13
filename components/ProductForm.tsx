@@ -85,12 +85,13 @@ export function ProductForm({
       canvas.height = height;
       ctx?.drawImage(img, 0, 0, width, height);
 
-      const result = canvas.toDataURL("image/jpeg", 0.8);
+      // Qualidade de 0.9 para melhor resultado visual com imagens de alimentos
+      const result = canvas.toDataURL("image/jpeg", 0.9);
 
-      // Validar tamanho do base64 resultante (máximo 1MB)
+      // Validar tamanho do base64 resultante (máximo 700KB, alinhado com backend)
       const base64SizeInKB = (result.length * 3) / 4 / 1024;
-      if (base64SizeInKB > 1024) {
-        toast.error(`Imagem muito pesada após compressão. Tente uma imagem menor ou de qualidade inferior.`);
+      if (base64SizeInKB > 700) {
+        toast.error(`Imagem muito pesada (${base64SizeInKB.toFixed(0)}KB). Máximo: 700KB. Tente uma imagem menor ou de qualidade inferior.`);
         return;
       }
 
