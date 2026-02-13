@@ -443,12 +443,6 @@ async function executeSyncTo(
       throw new Error(`Erro ao validar dados antes de sincronizar: ${message}`);
     }
 
-    // DEBUG: Log do que foi sanitizado
-    console.log("[executeSyncTo] Dados sanitizados:", {
-      categoriesCount: sanitizedData.categories.length,
-      categoriesSample: sanitizedData.categories[0],
-    });
-
     // Adicionar timestamp de atualizacao aos produtos
     const productsWithTimestamp = sanitizedData.products.map((p) => ({
       ...p,
@@ -467,12 +461,6 @@ async function executeSyncTo(
       products: productsWithTimestamp,
       categories: categoriesWithOrder,
     };
-
-    // DEBUG: Log do que será enviado no body
-    console.log("[executeSyncTo] Body a enviar:", {
-      categoriesCount: bodyToSend.categories.length,
-      categoriesSample: bodyToSend.categories[0],
-    });
 
     await retryWithBackoff(
       async () => {
