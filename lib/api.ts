@@ -455,9 +455,17 @@ async function executeSyncTo(
       updated_at: new Date().toISOString(),
     }));
 
+    // CRÍTICO FIX: Garantir que categories têm order antes de enviar
+    const categoriesWithOrder = sanitizedData.categories.map((cat, idx) => ({
+      id: cat.id,
+      name: cat.name,
+      order: typeof cat.order === 'number' ? cat.order : idx,
+      ...(cat.created_at && { created_at: cat.created_at }),
+    }));
+
     const bodyToSend = {
       products: productsWithTimestamp,
-      categories: sanitizedData.categories,
+      categories: categoriesWithOrder,
     };
 
     // DEBUG: Log do que será enviado no body
