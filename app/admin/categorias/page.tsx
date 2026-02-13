@@ -194,34 +194,26 @@ export default function CategoriasPage() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      {/* Ordem e número */}
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleMoveCategory(category.id, "up")}
-                          disabled={index === 0}
-                          className="w-8 h-6 flex items-center justify-center rounded bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
-                          title="Mover para cima"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          onClick={() => handleMoveCategory(category.id, "down")}
-                          disabled={index === cardapio.categories.length - 1}
-                          className="w-8 h-6 flex items-center justify-center rounded bg-gray-200 hover:bg-gray-300 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-xs font-bold"
-                          title="Mover para baixo"
-                        >
-                          ▼
-                        </button>
-                      </div>
-                      <span className="text-sm font-bold text-gray-400 w-6 text-center flex-shrink-0">
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-gray-900 truncate">
-                          {category.name}
-                        </h4>
-                        <p className="text-xs text-gray-500">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Botão para mover para cima */}
+                      <button
+                        onClick={() => handleMoveCategory(category.id, "up")}
+                        disabled={index === 0}
+                        className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 transition-all text-sm font-bold"
+                        title={index === 0 ? "Já está no topo" : "Mover para cima"}
+                      >
+                        ▲
+                      </button>
+
+                      {/* Número + Nome */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-400 flex-shrink-0">{index + 1}.</span>
+                          <h4 className="font-semibold text-gray-900 truncate">
+                            {category.name}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-500 ml-5">
                           {cardapio.products.filter((p) => p.category === category.id).length} produtos
                         </p>
                       </div>

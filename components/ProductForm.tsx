@@ -52,8 +52,8 @@ export function ProductForm({
       return;
     }
 
-    // Validar tamanho do arquivo (máximo 2MB)
-    const maxFileSizeMB = 2;
+    // Validar tamanho do arquivo (máximo 5MB)
+    const maxFileSizeMB = 5;
     const fileSizeInMB = file.size / (1024 * 1024);
     if (fileSizeInMB > maxFileSizeMB) {
       toast.error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB. Seu arquivo: ${fileSizeInMB.toFixed(2)}MB`);
@@ -65,8 +65,8 @@ export function ProductForm({
     const img = new Image();
 
     img.onload = () => {
-      const maxWidth = 800;
-      const maxHeight = 600;
+      const maxWidth = 1200;
+      const maxHeight = 1200;
       let { width, height } = img;
 
       if (width > height) {
@@ -85,11 +85,11 @@ export function ProductForm({
       canvas.height = height;
       ctx?.drawImage(img, 0, 0, width, height);
 
-      const result = canvas.toDataURL("image/jpeg", 0.7);
+      const result = canvas.toDataURL("image/jpeg", 0.8);
 
-      // Validar tamanho do base64 resultante (máximo 500KB)
+      // Validar tamanho do base64 resultante (máximo 1MB)
       const base64SizeInKB = (result.length * 3) / 4 / 1024;
-      if (base64SizeInKB > 500) {
+      if (base64SizeInKB > 1024) {
         toast.error(`Imagem muito pesada após compressão. Tente uma imagem menor ou de qualidade inferior.`);
         return;
       }
