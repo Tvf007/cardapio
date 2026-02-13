@@ -14,13 +14,17 @@ export default function CategoriasPage() {
   const cardapio = useCardapio();
   const toast = useToast();
 
+  // CRÍTICO: Filtrar apenas para exibição, não para sincronização
+  // As categorias ocultas (como __hidden__) precisam estar no estado para sincronizar corretamente
+  const visibleCategories = cardapio.categories.filter((c) => c.id !== "__hidden__");
+
   const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) {
       toast.error("Digite o nome da categoria");
       return;
     }
 
-    const nameExists = cardapio.categories.some(
+    const nameExists = visibleCategories.some(
       (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
     );
     if (nameExists) {
@@ -32,7 +36,7 @@ export default function CategoriasPage() {
       const newCategory: Category = {
         id: uuid(),
         name: newCategoryName.trim(),
-        order: cardapio.categories.length,
+        order: visibleCategories.length,
       };
 
       await cardapio.addCategory(newCategory);
@@ -41,7 +45,7 @@ export default function CategoriasPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao criar categoria");
     }
-  }, [newCategoryName, cardapio, toast]);
+  }, [newCategoryName, visibleCategories, cardapio, toast]);
 
   const handleEditCategory = useCallback(async (categoryId: string) => {
     if (!editingCategoryName.trim()) {
@@ -68,25 +72,30 @@ export default function CategoriasPage() {
 
   const handleMoveCategory = useCallback(
     async (categoryId: string, direction: "up" | "down") => {
-      const cats = [...cardapio.categories];
-      const index = cats.findIndex((c) => c.id === categoryId);
+      // Trabalhar apenas com categorias visíveis para reordenação
+      const visibleCats = [...visibleCategories];
+      const index = visibleCats.findIndex((c) => c.id === categoryId);
       if (index === -1) return;
 
       const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= cats.length) return;
+      if (targetIndex < 0 || targetIndex >= visibleCats.length) return;
 
       // Trocar posições
-      [cats[index], cats[targetIndex]] = [cats[targetIndex], cats[index]];
+      [visibleCats[index], visibleCats[targetIndex]] = [visibleCats[targetIndex], visibleCats[index]];
 
-      // Atribuir order e salvar
-      const reordered = cats.map((c, i) => ({ ...c, order: i }));
+      // CRÍTICO: Precisa reordenar as categorias visíveis mas manter as ocultas no final
+      // Reconstruct com order apenas para as visíveis, e manter as ocultas com seu order original
+      const hiddenCats = cardapio.categories.filter((c) => c.id === "__hidden__");
+      const reorderedVisible = visibleCats.map((c, i) => ({ ...c, order: i }));
+      const allReordered = [...reorderedVisible, ...hiddenCats];
+
       try {
-        await cardapio.reorderCategories(reordered);
+        await cardapio.reorderCategories(allReordered);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
       }
     },
-    [cardapio, toast]
+    [visibleCategories, cardapio, toast]
   );
 
   const handleDeleteCategory = useCallback(
@@ -150,11 +159,11 @@ export default function CategoriasPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="border-b border-gray-200 px-6 py-4">
           <h3 className="font-bold text-gray-900">
-            Categorias ({cardapio.categories.length})
+            Categorias ({visibleCategories.length})
           </h3>
         </div>
 
-        {cardapio.categories.length === 0 ? (
+        {visibleCategories.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-gray-500 mb-2">Nenhuma categoria criada ainda</p>
             <p className="text-gray-400 text-sm">
@@ -163,7 +172,7 @@ export default function CategoriasPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {cardapio.categories.map((category, index) => (
+            {visibleCategories.map((category, index) => (
               <div
                 key={category.id}
                 className="p-4 hover:bg-gray-50 transition-colors"

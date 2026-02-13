@@ -167,11 +167,28 @@ export function useSyncedData(): SyncedDataState & {
 
       if (!mountedRef.current) return;
 
-      // Filtrar itens de sistema (logo, __hidden__) dos dados visíveis
-      const { categories, products, logo } = filterSystemItems(
-        data.categories,
-        data.products
+      // NÃO filtrar categorias aqui! Precisamos manter TODAS para sincronização
+      // Apenas filtrar produtos e logo, e ordenar categorias
+      let logo: string | null = null;
+      const visibleProducts = data.products.filter((p) => {
+        if (p.id === LOGO_ITEM_ID) {
+          logo = p.image || null;
+          return false;
+        }
+        if (p.id.startsWith("__site_config_")) {
+          return false;
+        }
+        if (p.category === HIDDEN_CATEGORY_ID) {
+          return false;
+        }
+        return true;
+      });
+
+      // Ordenar todas as categorias pelo campo order, MAS NÃO REMOVER as ocultas
+      const categories = [...data.categories].sort(
+        (a, b) => (a.order ?? 999) - (b.order ?? 999)
       );
+      const products = visibleProducts;
 
       // Fallback localStorage apenas se Supabase não retornou logo
       let finalLogo = logo;
@@ -259,13 +276,33 @@ export function useSyncedData(): SyncedDataState & {
     try {
       const cached = loadFromLocalStorage();
       if (cached.categories.length > 0 || cached.products.length > 0) {
-        // Filtrar sistema items do cache também
-        const filtered = filterSystemItems(cached.categories, cached.products);
+        // NÃO filtrar categorias do cache! Precisamos de TODAS para sincronização
+        // Apenas filtrar produtos e logo
+        let logo = cached.logo;
+        const visibleProducts = cached.products.filter((p) => {
+          if (p.id === LOGO_ITEM_ID) {
+            logo = p.image || logo;
+            return false;
+          }
+          if (p.id.startsWith("__site_config_")) {
+            return false;
+          }
+          if (p.category === HIDDEN_CATEGORY_ID) {
+            return false;
+          }
+          return true;
+        });
+
+        // Ordenar categorias mas manter TODAS (incluindo ocultas)
+        const sortedCategories = [...cached.categories].sort(
+          (a, b) => (a.order ?? 999) - (b.order ?? 999)
+        );
+
         setState((prev) => ({
           ...prev,
-          categories: filtered.categories,
-          products: filtered.products,
-          logo: filtered.logo || cached.logo || prev.logo,
+          categories: sortedCategories,
+          products: visibleProducts,
+          logo: logo || prev.logo,
           loading: false, // Temos cache, não precisa mostrar loading
         }));
         console.info("[useSyncedData] Dados carregados do cache local");
