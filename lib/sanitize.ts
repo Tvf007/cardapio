@@ -15,23 +15,21 @@ export function sanitizeCategory(category: any): Category {
   }
 
   // Garantir que order é sempre um número (coerce from string if needed)
-  let order: number | undefined;
+  // CRÍTICO: Sempre tem que ter um valor numérico para garantir que seja enviado no JSON
+  let order: number;
   if (typeof category.order === "number") {
     order = category.order;
   } else if (typeof category.order === "string") {
     const parsed = parseInt(category.order, 10);
-    order = isNaN(parsed) ? undefined : parsed;
+    order = isNaN(parsed) ? 0 : parsed;
   } else {
-    order = undefined;
+    order = 0;
   }
 
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
-    // CRÍTICO: SÓ incluir order se for um número válido
-    // JSON.stringify remove undefined, então nunca enviaríamos se usássemos undefined
-    // Sempre enviamos o número (0, 1, 2, etc) ou nada
-    ...(typeof order === "number" && { order }),
+    order, // SEMPRE incluir order com um valor numérico
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
@@ -102,7 +100,7 @@ export function sanitizeCategories(categories: any[]): Category[] {
     throw new Error("Categorias deve ser um array");
   }
 
-  const sanitized = categories
+  return categories
     .filter((cat) => cat && typeof cat === "object")
     .map((cat, index) => {
       try {
@@ -112,13 +110,6 @@ export function sanitizeCategories(categories: any[]): Category[] {
         throw new Error(`Categoria [${index}]: ${message}`);
       }
     });
-
-  // Debug: log first 2 sanitized categories
-  if (typeof window === "undefined" && sanitized.length > 0) {
-    console.log("[sanitizeCategories] First 2 sanitized:", JSON.stringify(sanitized.slice(0, 2)));
-  }
-
-  return sanitized;
 }
 
 /**
