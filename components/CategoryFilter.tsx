@@ -9,7 +9,7 @@ interface CategoryFilterProps {
   onCategoryChange: (categoryId: string | null) => void;
 }
 
-// PERFORMANCE FIX: React.memo para evitar re-renders desnecessarios
+// PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
 export const CategoryFilter = memo(function CategoryFilter({
   categories,
   activeCategory,
@@ -20,7 +20,6 @@ export const CategoryFilter = memo(function CategoryFilter({
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
 
-  // Verificar se tem scroll e atualizar indicadores
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -38,7 +37,6 @@ export const CategoryFilter = memo(function CategoryFilter({
     if (!el) return;
 
     el.addEventListener("scroll", checkScroll, { passive: true });
-    // Re-check on resize
     const observer = new ResizeObserver(checkScroll);
     observer.observe(el);
 
@@ -52,24 +50,24 @@ export const CategoryFilter = memo(function CategoryFilter({
     <div className="relative">
       {/* Gradiente fade esquerda */}
       {showLeftFade && (
-        <div className="absolute left-0 top-0 bottom-4 w-10 bg-gradient-to-r from-amber-50 to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
       )}
 
       {/* Gradiente fade direita */}
       {showRightFade && (
-        <div className="absolute right-0 top-0 bottom-4 w-10 bg-gradient-to-l from-amber-50 to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
       )}
 
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-4 mb-8 scrollbar-hide"
+        className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide"
       >
         <button
           onClick={handleAll}
-          className={`category-btn px-6 py-3 rounded-full font-semibold whitespace-nowrap flex-shrink-0 border-2 shadow-sm text-sm ${
+          className={`category-btn px-5 py-2.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0 text-sm transition-all ${
             activeCategory === null
-              ? "active bg-[#7c4e42] border-[#7c4e42] text-white shadow-lg"
-              : "bg-white border-gray-200 text-gray-700 hover:border-[#a67c5a] hover:bg-amber-50"
+              ? "active bg-[#7c4e42] text-white shadow-md"
+              : "bg-white text-gray-600 hover:bg-amber-50 border border-gray-200 hover:border-[#d4a574]"
           }`}
         >
           Todos
@@ -80,10 +78,10 @@ export const CategoryFilter = memo(function CategoryFilter({
             <button
               key={category.id}
               onClick={() => onCategoryChange(category.id)}
-              className={`category-btn px-6 py-3 rounded-full font-semibold whitespace-nowrap flex-shrink-0 border-2 shadow-sm text-sm ${
+              className={`category-btn px-5 py-2.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0 text-sm transition-all ${
                 isActive
-                  ? "active bg-[#7c4e42] border-[#7c4e42] text-white shadow-lg"
-                  : "bg-white border-gray-200 text-gray-700 hover:border-[#a67c5a] hover:bg-amber-50"
+                  ? "active bg-[#7c4e42] text-white shadow-md"
+                  : "bg-white text-gray-600 hover:bg-amber-50 border border-gray-200 hover:border-[#d4a574]"
               }`}
             >
               {category.name}

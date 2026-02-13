@@ -22,7 +22,7 @@ const CATEGORY_COLORS = [
   '#7c3aed', '#0891b2', '#be185d', '#65a30d', '#ea580c',
 ];
 
-function getCategoryColor(categoryName: string): string {
+export function getCategoryColor(categoryName: string): string {
   let hash = 0;
   for (let i = 0; i < categoryName.length; i++) {
     hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
@@ -30,17 +30,16 @@ function getCategoryColor(categoryName: string): string {
   return CATEGORY_COLORS[Math.abs(hash) % CATEGORY_COLORS.length];
 }
 
-function getCategoryName(categoryId: string, categories?: Category[]): string {
+export function getCategoryName(categoryId: string, categories?: Category[]): string {
   if (!categories) return "N/A";
   return categories.find((c) => c.id === categoryId)?.name || "N/A";
 }
 
-// PERFORMANCE FIX: React.memo para evitar re-renders desnecessarios
+// PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
 export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemProps) {
   const [showModal, setShowModal] = useState(false);
   const isNew = isNewProduct(item);
 
-  // PERFORMANCE FIX: useMemo para evitar recalcular em cada render
   const categoryName = useMemo(
     () => getCategoryName(item.category, categories),
     [item.category, categories]
@@ -59,11 +58,12 @@ export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemPro
     setShowModal(false);
   }, []);
 
+  const isUnavailable = !item.available;
+
   return (
     <>
       <div
-        className="menu-card group bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 flex flex-col"
-        style={{ borderTop: `3px solid ${categoryColor}` }}
+        className="menu-card menu-card-mobile group bg-white shadow-sm overflow-hidden border border-gray-100"
         onClick={handleOpenModal}
         role="button"
         tabIndex={0}
@@ -74,73 +74,83 @@ export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemPro
             handleOpenModal();
           }
         }}
+        style={{ opacity: isUnavailable ? 0.6 : 1 }}
       >
-        {/* Image Container */}
-        <div className="relative h-48 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden flex-shrink-0">
+        {/* Imagem */}
+        <div className="card-image-mobile relative bg-gradient-to-br from-amber-50 to-orange-50 flex-shrink-0">
           {item.image && item.image.trim() !== "" ? (
             <img
               src={item.image}
               alt={item.name}
-              className="menu-card-image w-full h-full object-contain bg-white"
+              className="menu-card-image w-full h-full object-cover"
               loading="lazy"
               decoding="async"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-              <span className="text-5xl mb-1">&#127869;</span>
-              <span className="text-xs font-medium">Sem imagem</span>
+            <div className="w-full h-full flex flex-col items-center justify-center text-amber-300">
+              <span className="text-4xl sm:text-5xl">🥐</span>
             </div>
           )}
 
-          {/* Availability Badge */}
-          <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-md ${item.available ? 'bg-green-500' : 'bg-red-500'}`}>
-            {item.available ? "Disponivel" : "Indisponivel"}
-          </span>
+          {/* Badge Indisponível - só mostra quando indisponível */}
+          {isUnavailable && (
+            <span className="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-white shadow-md bg-red-500">
+              Indisponível
+            </span>
+          )}
 
-          {/* New Badge */}
-          {isNew && (
-            <div className="absolute top-3 left-3">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-md bg-gradient-to-r from-amber-500 to-red-500">
+          {/* Badge Novo */}
+          {isNew && !isUnavailable && (
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+              <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-md bg-gradient-to-r from-amber-500 to-orange-500">
                 Novo
               </span>
             </div>
           )}
 
-          {/* Price Badge */}
-          <div className="absolute bottom-3 right-3 bg-gradient-to-r from-green-500 to-green-600 shadow-md px-4 py-2 rounded-md">
-            <span className="font-extrabold text-white text-base">
-              R$ {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
-            </span>
+          {/* Preço no card desktop (sobre a imagem) */}
+          <div className="hidden sm:block absolute bottom-3 right-3">
+            <div className="bg-white/95 backdrop-blur-sm shadow-lg px-3 py-1.5 rounded-xl">
+              <span className="font-extrabold text-[#7c4e42] text-base">
+                R$ {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 flex flex-col flex-1">
-          <h3 className="text-base font-semibold text-gray-900 mb-1.5 line-clamp-2">
+        {/* Conteúdo */}
+        <div className="card-content-mobile">
+          <h3 className="text-sm sm:text-base font-bold text-gray-900 line-clamp-1 sm:line-clamp-2 mb-0.5 sm:mb-1">
             {item.name}
           </h3>
 
           {item.description && (
-            <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed mb-3">
+            <p className="text-xs sm:text-sm text-gray-500 line-clamp-1 sm:line-clamp-2 leading-snug mb-1.5 sm:mb-3">
               {item.description}
             </p>
           )}
 
-          <div className="mt-auto flex items-center justify-between">
+          {/* Preço mobile - inline */}
+          <div className="sm:hidden">
+            <span className="font-extrabold text-[#7c4e42] text-base">
+              R$ {typeof item.price === 'number' ? item.price.toFixed(2) : '0.00'}
+            </span>
+          </div>
+
+          {/* Footer do card desktop */}
+          <div className="hidden sm:flex mt-auto items-center justify-between">
             <span
-              className="inline-block px-3 py-1 rounded-full text-xs font-semibold border"
+              className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
               style={{
-                backgroundColor: `${categoryColor}15`,
+                backgroundColor: `${categoryColor}10`,
                 color: categoryColor,
-                borderColor: categoryColor
+                borderColor: `${categoryColor}30`
               }}
             >
               {categoryName}
             </span>
-
-            {/* Indicador de "clique para ver mais" */}
-            <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
-              Ver detalhes
+            <span className="text-xs text-gray-400 group-hover:text-[#7c4e42] transition-colors">
+              Ver mais →
             </span>
           </div>
         </div>

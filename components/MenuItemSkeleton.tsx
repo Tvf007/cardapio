@@ -2,28 +2,17 @@
 
 export function MenuItemSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 animate-pulse">
-      {/* Image Skeleton */}
-      <div className="h-48 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton" />
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+      {/* Mobile: layout horizontal */}
+      <div className="flex sm:flex-col">
+        {/* Image Skeleton */}
+        <div className="w-[110px] h-[110px] sm:w-full sm:h-48 skeleton flex-shrink-0" />
 
-      {/* Content Skeleton */}
-      <div className="p-4">
-        {/* Name Skeleton */}
-        <div className="h-6 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded mb-2 w-3/4" />
-
-        {/* Category Skeleton */}
-        <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded mb-3 w-1/2" />
-
-        {/* Description Skeleton */}
-        <div className="space-y-2 mb-4">
-          <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded w-full" />
-          <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded w-5/6" />
-        </div>
-
-        {/* Price and Button Skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="h-6 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded w-20" />
-          <div className="h-10 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 skeleton rounded w-20" />
+        {/* Content Skeleton */}
+        <div className="p-3 sm:p-4 flex-1">
+          <div className="h-4 sm:h-5 skeleton rounded-lg mb-2 w-3/4" />
+          <div className="h-3 sm:h-4 skeleton rounded-lg mb-2 w-full" />
+          <div className="h-5 skeleton rounded-lg w-20 mt-2" />
         </div>
       </div>
     </div>
@@ -32,7 +21,7 @@ export function MenuItemSkeleton() {
 
 export function MenuGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
       {Array.from({ length: 6 }).map((_, i) => (
         <MenuItemSkeleton key={i} />
       ))}
