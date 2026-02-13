@@ -191,7 +191,7 @@ export function useSyncedData(): SyncedDataState & {
       const products = visibleProducts;
 
       // Fallback localStorage apenas se Supabase não retornou logo
-      let finalLogo = logo;
+      let finalLogo: string | null = logo;
       if (!finalLogo) {
         try {
           const fallbackLogo = localStorage.getItem("padaria-logo");

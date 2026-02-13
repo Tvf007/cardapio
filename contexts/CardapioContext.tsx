@@ -188,17 +188,14 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
   const reorderCategories = useCallback(
     async (reorderedCategories: Category[]) => {
       const previousCategories = syncedData.categories;
-      // Atribuir order baseado na posição no array
-      const withOrder = reorderedCategories.map((c, index) => ({
-        ...c,
-        order: index,
-      }));
-      syncedData.setOptimisticData({ categories: withOrder });
+      // NÃO remapear order aqui - a lógica de reordenação já atribui order correto
+      // handleMoveCategory já calcula order para visíveis + mantém ocultas com seu order
+      syncedData.setOptimisticData({ categories: reorderedCategories });
 
       try {
         // O timeout agora está em syncToSupabase (30s)
         // Sem timeout extra aqui para não criar camadas desnecessárias
-        await syncToSupabase(syncedData.products, withOrder);
+        await syncToSupabase(syncedData.products, reorderedCategories);
 
         // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
         // Delay de 500ms permite que o backend processe completamente antes do fetch
