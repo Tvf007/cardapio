@@ -443,21 +443,35 @@ async function executeSyncTo(
       throw new Error(`Erro ao validar dados antes de sincronizar: ${message}`);
     }
 
+    // DEBUG: Log do que foi sanitizado
+    console.log("[executeSyncTo] Dados sanitizados:", {
+      categoriesCount: sanitizedData.categories.length,
+      categoriesSample: sanitizedData.categories[0],
+    });
+
     // Adicionar timestamp de atualizacao aos produtos
     const productsWithTimestamp = sanitizedData.products.map((p) => ({
       ...p,
       updated_at: new Date().toISOString(),
     }));
 
+    const bodyToSend = {
+      products: productsWithTimestamp,
+      categories: sanitizedData.categories,
+    };
+
+    // DEBUG: Log do que será enviado no body
+    console.log("[executeSyncTo] Body a enviar:", {
+      categoriesCount: bodyToSend.categories.length,
+      categoriesSample: bodyToSend.categories[0],
+    });
+
     await retryWithBackoff(
       async () => {
         const response = await fetchWithAbort(API_CONFIG.syncEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            products: productsWithTimestamp,
-            categories: sanitizedData.categories,
-          }),
+          body: JSON.stringify(bodyToSend),
           credentials: "include", // SECURITY: Enviar cookie JWT para autenticação admin
           externalSignal: signal,
         });
