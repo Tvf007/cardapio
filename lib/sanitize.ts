@@ -17,6 +17,7 @@ export function sanitizeCategory(category: any): Category {
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
+    ...(typeof category.order === "number" && { order: category.order }),
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
