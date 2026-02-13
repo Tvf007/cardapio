@@ -15,18 +15,23 @@ export function sanitizeCategory(category: any): Category {
   }
 
   // Garantir que order é sempre um número (coerce from string if needed)
-  const order = typeof category.order === "number"
-    ? category.order
-    : typeof category.order === "string"
-    ? parseInt(category.order, 10)
-    : undefined;
+  let order: number | undefined;
+  if (typeof category.order === "number") {
+    order = category.order;
+  } else if (typeof category.order === "string") {
+    const parsed = parseInt(category.order, 10);
+    order = isNaN(parsed) ? undefined : parsed;
+  } else {
+    order = undefined;
+  }
 
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
-    // CRÍTICO: Incluir order sempre, mesmo que seja 0 ou undefined
-    // Isso garante que o campo é enviado no upsert
-    order: typeof order === "number" ? order : undefined,
+    // CRÍTICO: Sempre incluir order, mesmo que undefined
+    // O Zod vai aplicar o default(0) apenas se for undefined
+    // Mas se enviamos um número, esse número é mantido
+    ...(typeof order === "number" ? { order } : { order: undefined }),
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
 
