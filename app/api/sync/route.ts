@@ -111,6 +111,9 @@ export async function POST(request: NextRequest) {
       categories?: unknown[];
     };
 
+    // DEBUG: Log das categorias recebidas ANTES de qualquer processamento
+    console.log("[SYNC POST] Categorias recebidas do body:", JSON.stringify(categories, null, 2));
+
     // Validar que são arrays
     if (!Array.isArray(categories) || !Array.isArray(products)) {
       return NextResponse.json(
@@ -139,11 +142,13 @@ export async function POST(request: NextRequest) {
 
     // Filtrar categorias inválidas
     const validCategories = filterValidCategories(categories);
+    console.log("[SYNC POST] Categorias após filterValidCategories:", JSON.stringify(validCategories, null, 2));
 
     // Validar dados antes de salvar
     try {
       if (validCategories.length > 0) {
-        validateArray(CategorySchema, validCategories, "categories");
+        const validatedCats = validateArray(CategorySchema, validCategories, "categories");
+        console.log("[SYNC POST] Categorias após Zod validation:", JSON.stringify(validatedCats, null, 2));
 
         const duplicateNames = checkDuplicateCategoryNames(validCategories);
         if (duplicateNames.length > 0) {
@@ -216,6 +221,7 @@ export async function POST(request: NextRequest) {
 
     // Fase de upsert
     if (validCategories.length > 0) {
+      console.log("[SYNC POST] Dados a fazer upsert no Supabase:", JSON.stringify(validCategories, null, 2));
       const { error } = await supabase
         .from("categories")
         .upsert(validCategories, { onConflict: "id" });
