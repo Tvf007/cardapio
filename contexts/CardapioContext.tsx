@@ -93,10 +93,10 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         await syncToSupabase(optimisticProducts, validCats);
 
         // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
-        // Delay mínimo (100ms) permite que o backend processe antes do fetch
+        // Delay de 500ms permite que o backend processe completamente antes do fetch
         setTimeout(() => {
           syncedData.refresh();
-        }, 100);
+        }, 500);
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -201,11 +201,11 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         await syncToSupabase(syncedData.products, withOrder);
 
         // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
-        // Delay mínimo (100ms) permite que o backend processe antes do fetch
+        // Delay de 500ms permite que o backend processe completamente antes do fetch
         // Sem isso, o cache local fica desatualizado e impede persistência de mudanças
         setTimeout(() => {
           syncedData.refresh();
-        }, 100);
+        }, 500);
       } catch (error) {
         syncedData.setOptimisticData({ categories: previousCategories });
         throw error;
