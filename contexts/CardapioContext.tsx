@@ -194,6 +194,13 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
       try {
         await syncToSupabase(syncedData.products, withOrder);
+
+        // IMPORTANTE: Forçar refresh imediato para garantir sincronização entre dispositivos
+        // e evitar revert automático pelos listeners de Realtime/polling
+        // Delay de 500ms permite que a sincronização com Supabase seja processada
+        setTimeout(() => {
+          syncedData.refresh();
+        }, 500);
       } catch (error) {
         syncedData.setOptimisticData({ categories: previousCategories });
         throw error;

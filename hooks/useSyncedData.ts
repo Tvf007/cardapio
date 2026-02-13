@@ -27,7 +27,7 @@ export interface SyncedDataState {
 
 // PERFORMANCE FIX: Polling a cada 30s (Realtime cuida da sync rápida)
 const POLL_INTERVAL = 30000;
-const DEBOUNCE_DELAY = 800;
+const DEBOUNCE_DELAY = 200; // Reduzido de 800ms para 200ms para melhor responsividade em reorders
 
 // IDs de sistema que não devem aparecer no cardápio público
 const HIDDEN_CATEGORY_ID = "__hidden__";
