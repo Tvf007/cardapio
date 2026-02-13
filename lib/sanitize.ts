@@ -21,12 +21,16 @@ export function sanitizeCategory(category: any): Category {
     ? parseInt(category.order, 10)
     : undefined;
 
+  console.log(`[sanitizeCategory] id=${category.id}, name=${category.name}, input.order=${category.order}, parsed.order=${order}, typeof=${typeof order}`);
+
   const sanitized: Category = {
     id: String(category.id || "").trim(),
     name: String(category.name || "").trim(),
     ...(typeof order === "number" && { order }),
     ...(category.created_at && { created_at: String(category.created_at) }),
   };
+
+  console.log(`[sanitizeCategory] result=`, sanitized);
 
   // Validar campos obrigatórios
   if (!sanitized.id) {
