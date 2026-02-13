@@ -102,7 +102,7 @@ export function sanitizeCategories(categories: any[]): Category[] {
     throw new Error("Categorias deve ser um array");
   }
 
-  return categories
+  const sanitized = categories
     .filter((cat) => cat && typeof cat === "object")
     .map((cat, index) => {
       try {
@@ -112,6 +112,13 @@ export function sanitizeCategories(categories: any[]): Category[] {
         throw new Error(`Categoria [${index}]: ${message}`);
       }
     });
+
+  // Debug: log first 2 sanitized categories
+  if (typeof window === "undefined" && sanitized.length > 0) {
+    console.log("[sanitizeCategories] First 2 sanitized:", JSON.stringify(sanitized.slice(0, 2)));
+  }
+
+  return sanitized;
 }
 
 /**

@@ -216,10 +216,19 @@ export async function POST(request: NextRequest) {
 
     // Fase de upsert
     if (validCategories.length > 0) {
+      // Log para debug
+      console.log("[SYNC] Categories to upsert:", JSON.stringify(validCategories.slice(0, 2)));
+
       const { error } = await supabase
         .from("categories")
         .upsert(validCategories, { onConflict: "id" });
-      if (error) throw error;
+
+      if (error) {
+        console.error("[SYNC] Upsert error:", error);
+        throw error;
+      }
+
+      console.log("[SYNC] Upsert successful for", validCategories.length, "categories");
     }
 
     if (products.length > 0) {
