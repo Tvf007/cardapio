@@ -111,11 +111,6 @@ export async function POST(request: NextRequest) {
       categories?: unknown[];
     };
 
-    // Log first category to debug order field
-    if (Array.isArray(categories) && categories.length > 0) {
-      console.log("[SYNC] First category from request:", JSON.stringify(categories[0]));
-    }
-
     // Validar que são arrays
     if (!Array.isArray(categories) || !Array.isArray(products)) {
       return NextResponse.json(
