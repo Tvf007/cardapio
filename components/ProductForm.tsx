@@ -144,22 +144,9 @@ export function ProductForm({
     setError(null);
 
     try {
-      // TIMEOUT PROTECTION: Add a timeout to prevent indefinite loading
-      // Increased to 40 seconds to allow for retries in syncToSupabase (30s) + processing
-      const timeoutPromise = new Promise<void>((_, reject) => {
-        const timeoutId = setTimeout(() => {
-          reject(new Error("Operação de salvamento expirou. Verifique sua conexão de internet e tente novamente."));
-        }, 40000); // 40 segundo timeout
-
-        // Clean up timeout if operation completes successfully
-        return () => clearTimeout(timeoutId);
-      });
-
-      // Race the submit operation against the timeout
-      await Promise.race([
-        onSubmit(formData),
-        timeoutPromise,
-      ]);
+      // O timeout agora está em syncToSupabase (15s)
+      // Sem timeout extra aqui para não criar camadas desnecessárias
+      await onSubmit(formData);
 
       // If successful, call onCancel to close form/modal
       onCancel();

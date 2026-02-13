@@ -88,18 +88,9 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       try {
         const validCats = getValidCategories(syncedData.categories);
 
-        // TIMEOUT PROTECTION: Ensure syncToSupabase completes or times out
-        // Increased to 35 seconds to match the 30s timeout in syncToSupabase + buffer
-        const timeoutPromise = new Promise<void>((_, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error("Operação de salvamento expirou. Por favor, tente novamente."));
-          }, 35000); // 35 second timeout
-        });
-
-        await Promise.race([
-          syncToSupabase(optimisticProducts, validCats),
-          timeoutPromise,
-        ]);
+        // O timeout agora está em syncToSupabase (15s)
+        // Sem timeout extra aqui para não criar camadas desnecessárias
+        await syncToSupabase(optimisticProducts, validCats);
 
         // IMPORTANTE: Forçar refresh imediato para sincronização entre dispositivos
         // Sem isso, outros dispositivos precisam aguardar o polling (10s)
@@ -205,18 +196,9 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       syncedData.setOptimisticData({ categories: withOrder });
 
       try {
-        // TIMEOUT PROTECTION: Ensure syncToSupabase completes or times out
-        // Increased to 35 seconds to match the 30s timeout in syncToSupabase + buffer
-        const timeoutPromise = new Promise<void>((_, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error("Operação de reordenação expirou. Verifique sua conexão e tente novamente."));
-          }, 35000); // 35 second timeout
-        });
-
-        await Promise.race([
-          syncToSupabase(syncedData.products, withOrder),
-          timeoutPromise,
-        ]);
+        // O timeout agora está em syncToSupabase (15s)
+        // Sem timeout extra aqui para não criar camadas desnecessárias
+        await syncToSupabase(syncedData.products, withOrder);
 
         // IMPORTANTE: Forçar refresh imediato para garantir sincronização entre dispositivos
         // e evitar revert automático pelos listeners de Realtime/polling

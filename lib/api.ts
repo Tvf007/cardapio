@@ -362,7 +362,6 @@ export async function syncToSupabase(
   }
 ): Promise<void> {
   const requestQueue = getRequestQueue();
-  const crudMutex = getCrudMutex();
 
   logger.info("API", "Iniciando syncToSupabase", {
     productsCount: products.length,
@@ -370,34 +369,34 @@ export async function syncToSupabase(
   });
 
   // TIMEOUT PROTECTION: Garantir que a Promise sempre resolve ou rejeita
-  // Aumentado para 30 segundos para permitir retries com backoff exponencial
-  // Cálculo: 3 tentativas × 5s cada + delays (1s + 2s + 4s) = ~20-22s total esperado
+  // 15 segundos é suficiente para uma requisição HTTP rápida
   const timeoutPromise = new Promise<void>((_, reject) => {
     const timeoutId = setTimeout(() => {
-      reject(new Error("Operação de sincronização expirou após 30 segundos. Verifique sua conexão e tente novamente."));
-    }, 30000); // 30 segundo timeout
+      reject(new Error("Operação de sincronização expirou. Verifique sua conexão de internet e tente novamente."));
+    }, 15000); // 15 segundo timeout
   });
 
   try {
-    // Race against timeout
-    await Promise.race([
-      (async () => {
-        // Usar mutex para garantir sequenciamento
-        await crudMutex.withLock(async () => {
-          // Se skipQueue, executar direto
-          if (options?.skipQueue) {
-            await executeSyncTo(products, categories, options?.signal, onProgress);
-            return;
-          }
+    // REMOVER MUTEX: Estava causando deadlocks quando havia múltiplas operações rápidas
+    // A fila de requisições já garante sequenciamento adequado sem bloquear
 
-          // Enfileirar requisicao com prioridade alta (operacao de escrita)
+    // Se skipQueue, executar direto (sem retries)
+    if (options?.skipQueue) {
+      await Promise.race([
+        executeSyncTo(products, categories, options?.signal, onProgress),
+        timeoutPromise,
+      ]);
+    } else {
+      // Enfileirar requisicao com prioridade alta (operacao de escrita)
+      await Promise.race([
+        (async () => {
           const result = await requestQueue.enqueue(
             "sync_to",
             async (signal) => executeSyncTo(products, categories, signal, onProgress),
             {
               payload: { products, categories },
               priority: "high",
-              maxRetries: 2, // Reduzido de 3 para 2 (deixa margem de tempo)
+              maxRetries: 1, // Apenas 1 retry para ser rápido
               skipDeduplication: true, // Writes sempre devem executar
             }
           );
@@ -405,10 +404,10 @@ export async function syncToSupabase(
           if (!result.success) {
             throw result.error || new Error("Sync to failed");
           }
-        });
-      })(),
-      timeoutPromise,
-    ]);
+        })(),
+        timeoutPromise,
+      ]);
+    }
 
     // Invalidar cache apos escrita bem-sucedida
     localCache.invalidate("sync_data");
