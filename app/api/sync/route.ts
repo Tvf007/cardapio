@@ -140,6 +140,12 @@ export async function POST(request: NextRequest) {
     // Filtrar categorias inválidas
     const validCategories = filterValidCategories(categories);
 
+    // DEBUG: Log do que foi recebido
+    console.log("[SYNC POST] Categorias recebidas:", {
+      count: categories.length,
+      sample: categories[0]
+    });
+
     // Validar dados antes de salvar
     try {
       if (validCategories.length > 0) {
