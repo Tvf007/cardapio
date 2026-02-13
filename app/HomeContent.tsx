@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FaWhatsapp, FaInstagram } from "react-icons/fa";
 import { CategoryFilter, MenuGrid, MenuGridSkeleton } from "@/components";
 import { DarkModeToggle } from "@/components/DarkModeToggle";
+import { CategoryBreadcrumb } from "@/components/CategoryBreadcrumb";
 import { useCardapio } from "@/contexts/CardapioContext";
 
 const WHATSAPP_URL = "https://wa.me/5527997835980";
@@ -185,6 +186,13 @@ export function HomeContent() {
 
       {/* ===== CONTEÚDO PRINCIPAL ===== */}
       <main className="max-w-5xl mx-auto px-4 py-5 sm:py-8">
+
+        {/* Breadcrumb */}
+        <CategoryBreadcrumb
+          categories={categories}
+          activeCategory={activeCategory}
+          onCategoryChange={handleCategoryChange}
+        />
 
         {/* Seção de Destaques (se houver categoria destaque) */}
         {highlightItems.length > 0 && (
