@@ -21,6 +21,80 @@ function normalizeAvailable(available: unknown): boolean {
   return available === true || available === 1;
 }
 
+/**
+ * Calcula o tamanho EXATO de uma string base64
+ *
+ * Formula:
+ * - Base64 usa 4 caracteres para representar 3 bytes
+ * - Padding (=) no final indica bytes faltantes
+ * - Cálculo: (comprimento / 4) * 3 - padding
+ *
+ * @param base64String - String base64 da imagem (com ou sem data URI prefix)
+ * @returns Tamanho em bytes
+ */
+function getExactBase64SizeBytes(base64String: string): number {
+  // Remover data URI prefix se existir (ex: "data:image/jpeg;base64,")
+  let cleanBase64 = base64String;
+  if (base64String.includes(",")) {
+    cleanBase64 = base64String.split(",")[1];
+  }
+
+  // Contar padding
+  let paddingCount = 0;
+  if (cleanBase64.endsWith("==")) {
+    paddingCount = 2;
+  } else if (cleanBase64.endsWith("=")) {
+    paddingCount = 1;
+  }
+
+  // Cálculo preciso: (comprimento / 4) * 3 - padding
+  const sizeBytes = Math.floor((cleanBase64.length / 4) * 3) - paddingCount;
+  return Math.max(sizeBytes, 0); // Nunca retornar negativo
+}
+
+/**
+ * Valida se tamanho da imagem está dentro do limite
+ * Com tolerância de +5% para variações de encoding
+ *
+ * @param imageBase64 - String base64 da imagem
+ * @param maxSizeKB - Tamanho máximo em KB (default: 700)
+ * @returns Objeto com validação, tamanho em KB e mensagem se inválida
+ */
+function isImageSizeValid(
+  imageBase64: string,
+  maxSizeKB: number = 700
+): {
+  valid: boolean;
+  sizeKB: number;
+  sizeBytes: number;
+  message?: string;
+} {
+  const sizeBytes = getExactBase64SizeBytes(imageBase64);
+  const sizeKB = sizeBytes / 1024;
+
+  // Permitir +5% de margem para variações de codificação
+  // Exemplo: 700KB + 5% = 735KB
+  const tolerancePercent = 0.05;
+  const tolerance = maxSizeKB * tolerancePercent;
+  const actualLimit = maxSizeKB + tolerance;
+
+  if (sizeKB > actualLimit) {
+    const message = `Imagem: ${sizeKB.toFixed(0)}KB, máximo: ${maxSizeKB}KB. Tente reduzir qualidade ou dimensão.`;
+    return {
+      valid: false,
+      sizeKB,
+      sizeBytes,
+      message,
+    };
+  }
+
+  return {
+    valid: true,
+    sizeKB,
+    sizeBytes,
+  };
+}
+
 function filterValidCategories(
   categories: unknown[]
 ): Record<string, unknown>[] {
@@ -32,6 +106,89 @@ function filterValidCategories(
       (cat as Record<string, unknown>).id &&
       typeof (cat as Record<string, unknown>).id === "string"
   ) as Record<string, unknown>[];
+}
+
+/**
+ * Função auxiliar para fazer upsert em batches com timeout
+ * Evita travamento ao fazer upsert de muitos produtos com imagens grandes
+ *
+ * @param supabase - Cliente Supabase
+ * @param table - Nome da tabela (categories ou menu_items)
+ * @param items - Array de items a fazer upsert
+ * @param batchSize - Tamanho de cada batch (default: 100)
+ * @param timeoutMs - Timeout para cada batch em ms (default: 15000)
+ */
+async function upsertWithBatches(
+  supabase: any,
+  table: string,
+  items: any[],
+  batchSize: number = 100,
+  timeoutMs: number = 15000
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  // Dividir em batches
+  const batches = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    batches.push(items.slice(i, i + batchSize));
+  }
+
+  console.log(
+    `[SYNC] Fazendo upsert de ${items.length} items em ${batches.length} batches de ${batchSize}`
+  );
+
+  let successCount = 0;
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+
+    try {
+      // Criar promise de timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Timeout de ${timeoutMs}ms no upsert de batch ${batchIndex + 1}/${batches.length} da tabela '${table}'`
+              )
+            ),
+          timeoutMs
+        )
+      );
+
+      // Executar upsert com race condition para timeout
+      const result = await Promise.race([
+        supabase
+          .from(table)
+          .upsert(batch, { onConflict: "id" }),
+        timeoutPromise,
+      ]);
+
+      // Verificar se houve erro
+      if (result && result.error) {
+        throw result.error;
+      }
+
+      successCount += batch.length;
+      console.log(
+        `[SYNC] ✅ Batch ${batchIndex + 1}/${batches.length} concluido (${batch.length} items, total ${successCount}/${items.length})`
+      );
+    } catch (error) {
+      const errorMsg =
+        error instanceof Error ? error.message : String(error);
+      console.error(
+        `[SYNC] ❌ Erro no batch ${batchIndex + 1}/${batches.length}:`,
+        errorMsg
+      );
+      throw error;
+    }
+  }
+
+  console.log(
+    `[SYNC] ✅ Upsert concluido: ${successCount} items salvos em ${batches.length} batches`
+  );
 }
 
 export async function GET() {
@@ -123,22 +280,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar tamanho das imagens para evitar falhas de sincronização
-    // Limite aumentado de 500KB para 700KB para mais tolerância com imagens variadas
+    // Validar tamanho das imagens com cálculo preciso e tolerância
     const maxImageSizeKB = 700;
+    const imageValidationErrors: string[] = [];
+
     for (const product of products) {
       const prod = product as Record<string, unknown>;
       if (prod.image && typeof prod.image === "string") {
-        const imageSizeKB = (prod.image.length * 3) / 4 / 1024;
-        if (imageSizeKB > maxImageSizeKB) {
-          return NextResponse.json(
-            {
-              error: `Imagem do produto "${prod.name || prod.id}" muito grande (${imageSizeKB.toFixed(0)}KB). Máximo: ${maxImageSizeKB}KB. Tente comprimir a imagem.`
-            },
-            { status: 400 }
+        const validation = isImageSizeValid(prod.image, maxImageSizeKB);
+
+        if (!validation.valid) {
+          imageValidationErrors.push(
+            `"${String(prod.name || prod.id)}": ${validation.message}`
           );
         }
       }
+    }
+
+    // Se alguma imagem for inválida, retornar erro detalhado
+    if (imageValidationErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Uma ou mais imagens excedem o tamanho máximo permitido",
+          details: imageValidationErrors,
+          maxSizeKB: maxImageSizeKB,
+          helpText: "Tente comprimir as imagens ou reduzir suas dimensões",
+        },
+        { status: 400 }
+      );
     }
 
     // Filtrar categorias inválidas
@@ -233,11 +402,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (validatedProducts.length > 0) {
-      const { error } = await supabase
-        .from("menu_items")
-        .upsert(validatedProducts, { onConflict: "id" });
-      if (error) {
-        console.error("[SYNC] Erro ao fazer upsert de products:", error);
+      try {
+        // Usar batch processing com timeout para evitar travamento
+        // Batch size: 100 produtos por vez
+        // Timeout: 15 segundos por batch
+        await upsertWithBatches(
+          supabase,
+          "menu_items",
+          validatedProducts,
+          100,
+          15000
+        );
+      } catch (error) {
+        console.error(
+          "[SYNC] Erro ao fazer upsert de produtos (batch processing):",
+          error
+        );
         throw error;
       }
     }

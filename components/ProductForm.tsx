@@ -40,6 +40,11 @@ export function ProductForm({
   const [imagePreview, setImagePreview] = useState<string>(formData.image || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    status: "uploading" | "validating" | "saving" | "success" | "error";
+    message: string;
+    percentage: number;
+  } | null>(null);
 
   const isLoading = externalLoading || isSubmitting;
 
@@ -144,17 +149,69 @@ export function ProductForm({
     setIsSubmitting(true);
     setError(null);
 
+    // Iniciar progress
+    setUploadProgress({
+      status: "uploading",
+      message: "Preparando upload...",
+      percentage: 0,
+    });
+
     try {
-      // O timeout agora está em syncToSupabase (15s)
-      // Sem timeout extra aqui para não criar camadas desnecessárias
+      // Progresso: Validação
+      setTimeout(() => {
+        if (uploadProgress?.status !== "success") {
+          setUploadProgress({
+            status: "validating",
+            message: `Validando dados do produto "${formData.name}"...`,
+            percentage: 25,
+          });
+        }
+      }, 500);
+
+      // Progresso: Salvamento
+      setTimeout(() => {
+        if (uploadProgress?.status !== "success") {
+          setUploadProgress({
+            status: "saving",
+            message: `Sincronizando com servidor...`,
+            percentage: 60,
+          });
+        }
+      }, 2000);
+
+      // Executar submit
       await onSubmit(formData);
 
-      // If successful, call onCancel to close form/modal
+      // Progresso: Sucesso
+      setUploadProgress({
+        status: "success",
+        message: "Produto salvo com sucesso! 🎉",
+        percentage: 100,
+      });
+
+      // Esperar um pouco para usuário ver a mensagem de sucesso
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Fechar formulário
       onCancel();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Erro ao salvar produto";
+      const errorMessage =
+        err instanceof Error ? err.message : "Erro ao salvar produto";
+
+      // Mostrar erro no progress bar e na área de erro
+      setUploadProgress({
+        status: "error",
+        message: `Erro: ${errorMessage}`,
+        percentage: 0,
+      });
+
       setError(errorMessage);
       console.error("[ProductForm] Erro ao salvar:", err);
+
+      // Limpar progress bar após 5 segundos
+      setTimeout(() => {
+        setUploadProgress(null);
+      }, 5000);
     } finally {
       setIsSubmitting(false);
     }
@@ -165,6 +222,94 @@ export function ProductForm({
       <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8">
         {product ? "Editar Produto" : "Novo Produto"}
       </h2>
+
+      {/* Upload Progress Bar */}
+      {uploadProgress && (
+        <div
+          className={`mb-6 p-4 rounded-lg border ${
+            uploadProgress.status === "error"
+              ? "bg-red-50 border-red-200"
+              : uploadProgress.status === "success"
+              ? "bg-green-50 border-green-200"
+              : "bg-blue-50 border-blue-200"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p
+              className={`text-sm sm:text-base font-medium ${
+                uploadProgress.status === "error"
+                  ? "text-red-700"
+                  : uploadProgress.status === "success"
+                  ? "text-green-700"
+                  : "text-blue-700"
+              }`}
+            >
+              {uploadProgress.message}
+            </p>
+            {uploadProgress.status !== "error" && uploadProgress.status !== "success" && (
+              <span className="text-xs sm:text-sm font-semibold text-blue-600">
+                {uploadProgress.percentage}%
+              </span>
+            )}
+          </div>
+
+          {/* Progress Bar */}
+          {uploadProgress.status !== "error" && uploadProgress.status !== "success" && (
+            <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress.percentage}%` }}
+              />
+            </div>
+          )}
+
+          {/* Success Checkmark */}
+          {uploadProgress.status === "success" && (
+            <div className="flex items-center gap-2">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-green-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="w-full bg-green-200 rounded-full h-2">
+                <div className="bg-green-600 h-2 rounded-full w-full" />
+              </div>
+            </div>
+          )}
+
+          {/* Error Icon */}
+          {uploadProgress.status === "error" && (
+            <div className="flex items-center gap-2">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="w-full bg-red-200 rounded-full h-2">
+                <div className="bg-red-600 h-2 rounded-full w-full" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
