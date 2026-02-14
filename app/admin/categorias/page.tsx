@@ -7,6 +7,14 @@ import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
 import { Category } from "@/lib/validation";
 
+/**
+ * Verifica se uma categoria é oculta (sistema)
+ * Categorias ocultas têm IDs com formato __nome__
+ */
+const isHiddenCategory = (categoryId: string): boolean => {
+  return categoryId.startsWith("__") && categoryId.endsWith("__");
+};
+
 export default function CategoriasPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -16,7 +24,7 @@ export default function CategoriasPage() {
 
   // CRÍTICO: Filtrar apenas para exibição, não para sincronização
   // As categorias ocultas (como __hidden__) precisam estar no estado para sincronizar corretamente
-  const visibleCategories = cardapio.categories.filter((c) => c.id !== "__hidden__");
+  const visibleCategories = cardapio.categories.filter((c) => !isHiddenCategory(c.id));
 
   const handleAddCategory = useCallback(async () => {
     if (!newCategoryName.trim()) {
@@ -85,7 +93,7 @@ export default function CategoriasPage() {
 
       // CRÍTICO: Precisa reordenar as categorias visíveis mas manter as ocultas no final
       // Reconstruct com order apenas para as visíveis, e manter as ocultas com seu order original
-      const hiddenCats = cardapio.categories.filter((c) => c.id === "__hidden__");
+      const hiddenCats = cardapio.categories.filter((c) => isHiddenCategory(c.id));
       const reorderedVisible = visibleCats.map((c, i) => ({ ...c, order: i }));
       const allReordered = [...reorderedVisible, ...hiddenCats];
 
