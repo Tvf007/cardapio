@@ -319,12 +319,27 @@ export async function POST(request: NextRequest) {
     let validatedProducts = products;
 
     try {
+      // LOGGING DETALHADO: Antes de validação Zod
+      const validationStartTime = Date.now();
+      console.log(`[SYNC] Iniciando validação Zod`, {
+        categoriesCount: validCategories.length,
+        productsCount: products.length,
+        timestamp: new Date().toISOString()
+      });
+
       if (validCategories.length > 0) {
+        console.log(`[SYNC] Validando ${validCategories.length} categorias...`);
+        const catValidationStart = Date.now();
+
         // IMPORTANT: Capture the validated result - Zod applies defaults and normalizes data
         validatedCategories = validateArray(CategorySchema, validCategories, "categories");
 
+        const catValidationDuration = Date.now() - catValidationStart;
+        console.log(`[SYNC] ✅ Validação de categorias concluida em ${catValidationDuration}ms`);
+
         const duplicateNames = checkDuplicateCategoryNames(validatedCategories);
         if (duplicateNames.length > 0) {
+          console.error(`[SYNC] ❌ Categorias duplicadas encontradas:`, duplicateNames);
           return NextResponse.json(
             { error: "Nomes de categorias duplicados" },
             { status: 400 }
@@ -333,14 +348,31 @@ export async function POST(request: NextRequest) {
       }
 
       if (products.length > 0) {
+        console.log(`[SYNC] Validando ${products.length} produtos...`);
+        const prodValidationStart = Date.now();
+
         // IMPORTANT: Capture the validated result
         validatedProducts = validateArray(MenuItemSchema, products, "products");
+
+        const prodValidationDuration = Date.now() - prodValidationStart;
+        console.log(`[SYNC] ✅ Validação de produtos concluida em ${prodValidationDuration}ms`);
       }
+
+      const totalValidationDuration = Date.now() - validationStartTime;
+      console.log(`[SYNC] ✅ Validação Zod concluida em ${totalValidationDuration}ms`, {
+        categoriesValidated: validatedCategories.length,
+        productsValidated: validatedProducts.length
+      });
     } catch (validationError) {
       const msg =
         validationError instanceof Error
           ? validationError.message
           : "Erro de validação";
+      console.error(`[SYNC] ❌ Erro de validação Zod:`, {
+        message: msg,
+        stack: validationError instanceof Error ? validationError.stack : "N/A",
+        timestamp: new Date().toISOString()
+      });
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 

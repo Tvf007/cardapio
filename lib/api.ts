@@ -432,11 +432,11 @@ export async function syncToSupabase(
   });
 
   // TIMEOUT PROTECTION: Garantir que a Promise sempre resolve ou rejeita
-  // 30 segundos é necessário para imagens grandes (700KB+) em conexões lentas
+  // 60 segundos é necessário para imagens grandes (700KB+) em conexões lentas
   const timeoutPromise = new Promise<void>((_, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error("Operação de sincronização expirou. Verifique sua conexão de internet e tente novamente."));
-    }, 30000); // 30 segundo timeout (aumentado de 15s para suportar imagens grandes)
+    }, 60000); // 60 segundo timeout (aumentado de 30s para suportar validação Zod e imagens grandes)
   });
 
   try {

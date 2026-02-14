@@ -7,6 +7,37 @@ import { RippleButton } from "./RippleButton";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
 
+/**
+ * Calcula o tamanho EXATO de uma string base64 em KB
+ * SINCRONIZADO com backend (lib/api.ts)
+ *
+ * Formula:
+ * - Base64 usa 4 caracteres para representar 3 bytes
+ * - Padding (=) no final indica bytes faltantes
+ * - Cálculo: (comprimento / 4) * 3 - padding
+ */
+function getExactBase64SizeKB(base64String: string): number {
+  // Remover data URI prefix se existir (ex: "data:image/jpeg;base64,")
+  let cleanBase64 = base64String;
+  if (base64String.includes(",")) {
+    cleanBase64 = base64String.split(",")[1];
+  }
+
+  // Contar padding
+  let paddingCount = 0;
+  if (cleanBase64.endsWith("==")) {
+    paddingCount = 2;
+  } else if (cleanBase64.endsWith("=")) {
+    paddingCount = 1;
+  }
+
+  // Cálculo preciso: (comprimento / 4) * 3 - padding
+  const sizeBytes = Math.floor((cleanBase64.length / 4) * 3) - paddingCount;
+  const safeSizeBytes = Math.max(sizeBytes, 0); // Nunca retornar negativo
+
+  return safeSizeBytes / 1024; // Converter para KB
+}
+
 interface ProductFormProps {
   product?: MenuItem;
   categories: Array<{ id: string; name: string }>;
@@ -94,7 +125,8 @@ export function ProductForm({
       const result = canvas.toDataURL("image/jpeg", 0.9);
 
       // Validar tamanho do base64 resultante (máximo 700KB, alinhado com backend)
-      const base64SizeInKB = (result.length * 3) / 4 / 1024;
+      // SINCRONIZADO: Usar função getExactBase64SizeKB() idêntica ao backend
+      const base64SizeInKB = getExactBase64SizeKB(result);
       if (base64SizeInKB > 700) {
         toast.error(`Imagem muito pesada (${base64SizeInKB.toFixed(0)}KB). Máximo: 700KB. Tente uma imagem menor ou de qualidade inferior.`);
         return;
@@ -185,7 +217,7 @@ export function ProductForm({
       // Progresso: Sucesso
       setUploadProgress({
         status: "success",
-        message: "Produto salvo com sucesso! 🎉",
+        message: "Produto salvo com sucesso!",
         percentage: 100,
       });
 
@@ -195,8 +227,40 @@ export function ProductForm({
       // Fechar formulário
       onCancel();
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao salvar produto";
+      // Determinar mensagem de erro específica baseado no tipo de erro
+      let errorMessage = "Erro ao salvar produto";
+      let errorType = "UNKNOWN";
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+
+        // Classificar erro por tipo para melhor feedback ao usuário
+        if (err.message.includes("timeout") || err.message.includes("expirou")) {
+          errorType = "TIMEOUT";
+          errorMessage = "A operação levou muito tempo. Verifique sua conexão e tente novamente.";
+        } else if (err.message.includes("image") || err.message.includes("imagem")) {
+          errorType = "IMAGE_SIZE";
+          errorMessage = "A imagem é muito pesada. Tente comprimir e reenviar.";
+        } else if (err.message.includes("validation") || err.message.includes("validação")) {
+          errorType = "VALIDATION";
+          errorMessage = `Erro ao validar dados: ${err.message}`;
+        } else if (err.message.includes("401") || err.message.includes("401")) {
+          errorType = "AUTH";
+          errorMessage = "Você não tem permissão para realizar esta operação.";
+        } else if (err.message.includes("5") && err.message.includes("0")) {
+          errorType = "SERVER";
+          errorMessage = "Erro no servidor. Tente novamente em alguns segundos.";
+        }
+      }
+
+      // Log detalhado no console para debug
+      console.error("[ProductForm] Erro ao salvar:", {
+        errorType,
+        originalMessage: errorMessage,
+        fullError: err,
+        timestamp: new Date().toISOString(),
+        productName: formData.name
+      });
 
       // Mostrar erro no progress bar e na área de erro
       setUploadProgress({
@@ -206,12 +270,11 @@ export function ProductForm({
       });
 
       setError(errorMessage);
-      console.error("[ProductForm] Erro ao salvar:", err);
 
-      // Limpar progress bar após 5 segundos
+      // Aumentar tempo de exibição de erro de 5s para 8s
       setTimeout(() => {
         setUploadProgress(null);
-      }, 5000);
+      }, 8000);
     } finally {
       setIsSubmitting(false);
     }
