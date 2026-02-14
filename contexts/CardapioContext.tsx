@@ -3,7 +3,7 @@
 import React, { createContext, useContext, ReactNode, useCallback } from "react";
 import { MenuItem, Category } from "@/lib/validation";
 import { useSyncedData } from "@/hooks/useSyncedData";
-import { syncToSupabase } from "@/lib/api";
+import { syncToSupabase, syncToSupabaseDebounced } from "@/lib/api";
 
 interface CardapioContextType {
   // Dados
@@ -92,11 +92,9 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         // Sem timeout extra aqui para não criar camadas desnecessárias
         await syncToSupabase(optimisticProducts, validCats);
 
-        // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
-        // Delay de 3000ms (3s) permite que o Supabase processe completamente antes do fetch
-        setTimeout(() => {
-          syncedData.refresh();
-        }, 3000);
+        // Não fazer refresh automático - deixar a sincronização natural
+        // O frontend manterá a UI atualizada otimisticamente
+        // Supabase realtime e poll periódico vão sincronizar quando necessário
       } catch (error) {
         // REVERT: Restaurar estado anterior em caso de erro
         syncedData.setOptimisticData({ products: previousProducts });
@@ -193,16 +191,14 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
       syncedData.setOptimisticData({ categories: reorderedCategories });
 
       try {
-        // O timeout agora está em syncToSupabase (30s)
-        // Sem timeout extra aqui para não criar camadas desnecessárias
-        await syncToSupabase(syncedData.products, reorderedCategories);
+        // DEBOUNCE: Usar debounce para evitar múltiplas sincronizações
+        // Se o usuário move categoria 5x rapidamente, só 1 sync é enviado (a última)
+        // Delay de 500ms é suficiente para capturar movimentações rápidas
+        await syncToSupabaseDebounced(syncedData.products, reorderedCategories, 500);
 
-        // Forçar refresh APENAS após sucesso para garantir sincronização entre dispositivos
-        // Delay de 3000ms (3s) permite que o Supabase processe completamente antes do fetch
-        // Sem isso, o cache local fica desatualizado e impede persistência de mudanças
-        setTimeout(() => {
-          syncedData.refresh();
-        }, 3000);
+        // Não fazer refresh automático - deixar a sincronização natural
+        // O frontend manterá a UI atualizada otimisticamente
+        // Supabase realtime e poll periódico vão sincronizar quando necessário
       } catch (error) {
         syncedData.setOptimisticData({ categories: previousCategories });
         throw error;

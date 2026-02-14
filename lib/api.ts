@@ -210,6 +210,62 @@ class LocalCache {
 const localCache = new LocalCache();
 
 // ============================================================================
+// DEBOUNCE PARA SINCRONIZACAO
+// ============================================================================
+
+/**
+ * Variável global para rastrear sync pendente
+ * Permite que múltiplas chamadas rápidas resultem em apenas uma sincronização
+ */
+let syncTimeout: NodeJS.Timeout | null = null;
+
+/**
+ * Sincroniza dados PARA o Supabase com debounce inteligente
+ * Se o usuário faz múltiplas alterações rápidas (ex: mover categoria 5x),
+ * apenas a última sincronização é enviada, economizando banda e evitando
+ * múltiplos refreshes que causam flickering
+ *
+ * @param products - Lista de produtos a sincronizar
+ * @param categories - Lista de categorias a sincronizar
+ * @param delayMs - Atraso em ms antes de executar o sync (padrão: 500ms)
+ * @returns Promise que resolve quando o sync é executado
+ */
+export async function syncToSupabaseDebounced(
+  products: MenuItem[],
+  categories: Category[],
+  delayMs: number = 500
+): Promise<void> {
+  // Limpar timeout anterior se existir
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+    logger.debug("API", "Debounce: Cancelando sync anterior");
+  }
+
+  // Agendar nova sincronização
+  return new Promise((resolve, reject) => {
+    syncTimeout = setTimeout(async () => {
+      logger.info("API", "Debounce: Executando sync agendado", {
+        delayMs,
+        productsCount: products.length,
+        categoriesCount: categories.length,
+      });
+
+      try {
+        await syncToSupabase(products, categories);
+        syncTimeout = null;
+        resolve();
+      } catch (error) {
+        syncTimeout = null;
+        logger.error("API", "Debounce: Erro ao executar sync", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        reject(error);
+      }
+    }, delayMs);
+  });
+}
+
+// ============================================================================
 // API FUNCTIONS
 // ============================================================================
 
