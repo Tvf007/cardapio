@@ -235,6 +235,13 @@ export async function syncToSupabaseDebounced(
   categories: Category[],
   delayMs: number = 500
 ): Promise<void> {
+  // FIX (2026-02-14): Invalidar cache IMEDIATAMENTE para evitar race condition
+  // - Quando usuário inicia reordenação, remover cache local
+  // - Assim, se refresh() dispara enquanto POST é processado, não usa cache stale
+  // - Força GET próximo a buscar do servidor
+  localCache.invalidate("sync_data");
+  logger.debug("API", "Debounce: Cache invalidado para próxima sincronização");
+
   // Limpar timeout anterior se existir
   if (syncTimeout) {
     clearTimeout(syncTimeout);

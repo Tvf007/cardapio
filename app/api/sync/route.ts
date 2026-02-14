@@ -69,10 +69,14 @@ export async function GET() {
       products: normalizedProducts,
     });
 
-    // Cache por 5 segundos no browser, permitir stale-while-revalidate por 30s
+    // FIX (2026-02-14): Remover cache para evitar race condition com reordenação
+    // - Anterior: s-maxage=5 era servir cache por 5s
+    // - Problema: refresh() buscava dados de cache durante janela crítica
+    // - Resultado: order field retornava valor antigo, UI revertia após 6-8s
+    // - Solução: Sempre buscar do servidor, never cache stale data
     response.headers.set(
       "Cache-Control",
-      "public, s-maxage=5, stale-while-revalidate=30"
+      "public, max-age=0, must-revalidate"
     );
 
     return response;

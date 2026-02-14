@@ -336,7 +336,13 @@ export function useSyncedData(): SyncedDataState & {
       // BroadcastChannel not supported
     }
 
-    // Supabase Realtime - escuta mudanças no banco para TODOS os dispositivos
+    // DESABILITADO: Supabase Realtime causava race condition
+    // - Realtime dispara refresh enquanto POST /api/sync ainda está sendo processado
+    // - refresh() busca dados antes do POST ser confirmado pelo servidor
+    // - Resultado: UI reverte para dados antigos após 6-8 segundos
+    // SOLUÇÃO: Usar apenas polling (30s) como sincronização confiável
+    // FIX DATE: 2026-02-14
+    /*
     const channel = supabase
       .channel("cardapio-realtime")
       .on(
@@ -364,6 +370,10 @@ export function useSyncedData(): SyncedDataState & {
           console.warn("[useSyncedData] Realtime desconectado, dependendo do polling");
         }
       });
+    */
+
+    // FALLBACK: Criar channel dummy para compatibilidade, mas não subscribir
+    const channel = supabase.channel("cardapio-realtime-disabled");
 
     // Polling a cada 30s como backup do Realtime
     pollIntervalRef.current = setInterval(() => {
