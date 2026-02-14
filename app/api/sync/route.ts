@@ -141,11 +141,16 @@ export async function POST(request: NextRequest) {
     const validCategories = filterValidCategories(categories);
 
     // Validar dados antes de salvar
+    // CRÍTICO FIX: Usar o retorno de validateArray, não descartar!
+    let validatedCategories = validCategories;
+    let validatedProducts = products;
+
     try {
       if (validCategories.length > 0) {
-        validateArray(CategorySchema, validCategories, "categories");
+        // IMPORTANT: Capture the validated result - Zod applies defaults and normalizes data
+        validatedCategories = validateArray(CategorySchema, validCategories, "categories");
 
-        const duplicateNames = checkDuplicateCategoryNames(validCategories);
+        const duplicateNames = checkDuplicateCategoryNames(validatedCategories);
         if (duplicateNames.length > 0) {
           return NextResponse.json(
             { error: "Nomes de categorias duplicados" },
@@ -155,7 +160,8 @@ export async function POST(request: NextRequest) {
       }
 
       if (products.length > 0) {
-        validateArray(MenuItemSchema, products, "products");
+        // IMPORTANT: Capture the validated result
+        validatedProducts = validateArray(MenuItemSchema, products, "products");
       }
     } catch (validationError) {
       const msg =
@@ -183,9 +189,9 @@ export async function POST(request: NextRequest) {
     );
 
     const newCategoryIds = new Set(
-      validCategories.map((c) => String(c.id))
+      validatedCategories.map((c) => String((c as Record<string, unknown>).id))
     );
-    const newProductIds = new Set(products.map((p: unknown) => String((p as Record<string, unknown>).id)));
+    const newProductIds = new Set(validatedProducts.map((p: unknown) => String((p as Record<string, unknown>).id)));
 
     // CRITICAL FIX: Proteger categoria __hidden__ e logo __site_logo__ de deleção
     // O frontend filtra esses itens de sistema, então eles nunca vêm no array de sync
@@ -215,21 +221,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Fase de upsert
-    if (validCategories.length > 0) {
-      console.log("[SYNC] Upserting categories:", validCategories.map((c: any) => ({id: c.id, name: c.name, order: c.order})));
+    if (validatedCategories.length > 0) {
+      console.log("[SYNC] Upserting categories:", validatedCategories.map((c: any) => ({id: c.id, name: c.name, order: c.order})));
       const { error } = await supabase
         .from("categories")
-        .upsert(validCategories, { onConflict: "id" });
+        .upsert(validatedCategories, { onConflict: "id" });
       if (error) {
         console.error("[SYNC] Upsert error:", error);
         throw error;
       }
     }
 
-    if (products.length > 0) {
+    if (validatedProducts.length > 0) {
       const { error } = await supabase
         .from("menu_items")
-        .upsert(products, { onConflict: "id" });
+        .upsert(validatedProducts, { onConflict: "id" });
       if (error) {
         console.error("[SYNC] Erro ao fazer upsert de products:", error);
         throw error;
@@ -239,8 +245,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Dados sincronizados com sucesso!",
-      categoriesCount: validCategories.length,
-      productsCount: products.length,
+      categoriesCount: validatedCategories.length,
+      productsCount: validatedProducts.length,
       deletedCategories: categoriesToDelete.length,
       deletedProducts: productsToDelete.length,
     });
