@@ -47,6 +47,7 @@ export interface ApiResponse<T> {
 
 const API_CONFIG = {
   baseTimeout: 5000,
+  syncTimeout: 90000, // 90s para operações de sync (suporta imagens 700KB+ em conexões lentas)
   maxRetries: 3,
   initialRetryDelay: 1000,
   syncEndpoint: "/api/sync",
@@ -520,6 +521,12 @@ async function executeSyncTo(
       categories: categoriesWithOrder,
     };
 
+    // FIX CRÍTICO: Usar timeout maior (90s) para operações de sync com imagens grandes
+    // A razão: imagem 700KB + JSON serialization + transmissão em conexão lenta
+    // = pode facilmente levar > 30s em condições reais
+    const bodySize = JSON.stringify(bodyToSend).length;
+    logger.debug("API", "Tamanho do body:", { bytes: bodySize, kb: Math.round(bodySize / 1024) });
+
     await retryWithBackoff(
       async () => {
         const response = await fetchWithAbort(API_CONFIG.syncEndpoint, {
@@ -528,6 +535,7 @@ async function executeSyncTo(
           body: JSON.stringify(bodyToSend),
           credentials: "include", // SECURITY: Enviar cookie JWT para autenticação admin
           externalSignal: signal,
+          timeout: API_CONFIG.syncTimeout, // FIX: 90s ao invés de 5s padrão
         });
 
         if (!response.ok) {

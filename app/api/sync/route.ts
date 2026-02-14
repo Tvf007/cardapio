@@ -266,7 +266,27 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const body = await request.json();
+    // FIX CRÍTICO: Capturar erro de parsing JSON (pode falhar se body > 1MB)
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      const parseMsg = parseError instanceof Error ? parseError.message : "Erro ao fazer parse do JSON";
+      console.error("[SYNC] ❌ Erro ao fazer parse do request body:", {
+        message: parseMsg,
+        stack: parseError instanceof Error ? parseError.stack : "N/A",
+        timestamp: new Date().toISOString()
+      });
+      return NextResponse.json(
+        {
+          error: "Erro ao processar dados enviados",
+          details: "O corpo da requisição é inválido ou muito grande (limite: 1MB). Reduza o tamanho das imagens e tente novamente.",
+          hint: "Divida a sincronização em partes menores ou comprima as imagens."
+        },
+        { status: 400 }
+      );
+    }
+
     let { products = [], categories = [] } = body as {
       products?: unknown[];
       categories?: unknown[];
