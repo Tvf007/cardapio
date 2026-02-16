@@ -1,9 +1,10 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { RippleButton } from "@/components/RippleButton";
+import { getCurrentUser } from "@/lib/auth";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -13,9 +14,36 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const cardapio = useCardapio();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Verificar se está na página raiz de admin
   const isRootAdmin = pathname === "/admin";
+
+  // Verificar auth para sub-páginas (produtos, categorias, etc.)
+  // A página raiz /admin já tem seu próprio controle de auth
+  useEffect(() => {
+    if (isRootAdmin) {
+      setAuthChecked(true);
+      setIsAuthenticated(true);
+      return;
+    }
+
+    let cancelled = false;
+    const checkAuth = async () => {
+      const user = await getCurrentUser();
+      if (cancelled) return;
+      if (!user) {
+        router.replace("/admin");
+      } else {
+        setIsAuthenticated(true);
+      }
+      setAuthChecked(true);
+    };
+
+    checkAuth();
+    return () => { cancelled = true; };
+  }, [isRootAdmin, router]);
 
   // Extrair breadcrumb baseado na rota
   const getBreadcrumb = () => {
@@ -76,7 +104,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-2 sm:px-4 lg:px-8 py-6 sm:py-8">
-        {children}
+        {!isRootAdmin && !authChecked ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7c4e42]"></div>
+          </div>
+        ) : !isRootAdmin && !isAuthenticated ? null : (
+          children
+        )}
       </main>
     </div>
   );

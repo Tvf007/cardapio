@@ -539,11 +539,19 @@ async function executeSyncTo(
         });
 
         if (!response.ok) {
+          // Se 401, redirecionar para login - sessão expirou ou cookie ausente
+          if (response.status === 401) {
+            logger.error("API", "Sessão expirada (401) - redirecionando para login");
+            if (typeof window !== "undefined") {
+              window.location.href = "/admin";
+            }
+            throw new Error("Sessão expirada. Faça login novamente.");
+          }
           const errorText = await response.text().catch(() => "Erro desconhecido");
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
       },
-      { signal }
+      { signal, maxRetries: 0 }
     );
 
     const duration = Date.now() - startTime;
