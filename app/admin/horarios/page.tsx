@@ -26,7 +26,7 @@ function parseHorario(horarioStr: string): { open: number; close: number } | nul
 
 function isOpen(horarioSemana: string, horarioDomingo: string): boolean {
   const now = new Date();
-  const day = now.getDay(); // 0 = domingo
+  const day = now.getDay();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   const horario = day === 0 ? horarioDomingo : horarioSemana;
@@ -68,7 +68,7 @@ export default function HorariosPage() {
     setAberto(isOpen(horarioSemana, horarioDomingo));
     const interval = setInterval(() => {
       setAberto(isOpen(horarioSemana, horarioDomingo));
-    }, 60000); // Atualizar a cada minuto
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [horarioSemana, horarioDomingo]);
@@ -90,7 +90,7 @@ export default function HorariosPage() {
         throw new Error(data.error || "Erro ao salvar");
       }
       setEditingHorario(false);
-      toast.success("Horários atualizados com sucesso!");
+      toast.success("Horários atualizados!");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar horários");
     } finally {
@@ -99,124 +99,112 @@ export default function HorariosPage() {
   }, [horarioSemana, horarioDomingo, toast]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Horários de Funcionamento</h2>
-        <p className="text-gray-600">Configure os horários em que você funciona</p>
-      </div>
-
-      {/* Status Card */}
-      <div className={`rounded-2xl border-2 p-6 shadow-sm ${
+    <div className="space-y-5">
+      {/* Status aberto/fechado */}
+      <div className={`rounded-2xl p-5 shadow-sm border ${
         aberto
-          ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300"
-          : "bg-gradient-to-r from-red-50 to-rose-50 border-red-300"
+          ? "bg-green-50 border-green-200"
+          : "bg-red-50 border-red-200"
       }`}>
         <div className="flex items-center gap-4">
-          <div className={`text-5xl ${aberto ? "animate-pulse" : ""}`}>
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
+            aberto ? "bg-green-100" : "bg-red-100"
+          }`}>
             {aberto ? "🟢" : "🔴"}
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {aberto ? "Aberto Agora" : "Fechado Agora"}
+            <h3 className="text-lg font-bold text-gray-900">
+              {aberto ? "Aberto agora" : "Fechado agora"}
             </h3>
-            <p className={`text-sm font-semibold ${aberto ? "text-green-600" : "text-red-600"}`}>
+            <p className="text-xs text-gray-500">
               {new Date().toLocaleString("pt-BR")}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Horarios Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">🕐 Horários</h3>
+      {/* Card de horários */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Header do card */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h3 className="font-bold text-gray-900 text-sm">Horários de funcionamento</h3>
           {!editingHorario ? (
-            <RippleButton
+            <button
               onClick={() => setEditingHorario(true)}
-              className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-200 transition-all"
+              className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
             >
-              ✏️ Editar
-            </RippleButton>
+              Editar
+            </button>
           ) : (
             <div className="flex gap-2">
               <RippleButton
                 onClick={handleSaveHorarios}
                 disabled={savingHorario}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-all disabled:opacity-50"
+                className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-50"
               >
-                {savingHorario ? "Salvando..." : "✓ Salvar"}
+                {savingHorario ? "Salvando..." : "Salvar"}
               </RippleButton>
-              <RippleButton
+              <button
                 onClick={() => setEditingHorario(false)}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition-all"
+                className="text-gray-500 text-xs font-medium hover:text-gray-700 transition-colors px-3"
               >
-                ✕ Cancelar
-              </RippleButton>
+                Cancelar
+              </button>
             </div>
           )}
         </div>
 
-        {editingHorario ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Dias de semana (Segunda a Sábado)
-              </label>
-              <input
-                type="text"
-                value={horarioSemana}
-                onChange={(e) => setHorarioSemana(e.target.value)}
-                placeholder="Ex: Seg a Sab: 5h30 - 20h30"
-                className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Formato: "Texto: XhYZ - XhYZ" (ex: "Seg a Sab: 5h30 - 20h30")
+        {/* Conteúdo */}
+        <div className="p-5">
+          {editingHorario ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  Segunda a Sábado
+                </label>
+                <input
+                  type="text"
+                  value={horarioSemana}
+                  onChange={(e) => setHorarioSemana(e.target.value)}
+                  placeholder="Ex: Seg a Sab: 5h30 - 20h30"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  Domingo / Feriados
+                </label>
+                <input
+                  type="text"
+                  value={horarioDomingo}
+                  onChange={(e) => setHorarioDomingo(e.target.value)}
+                  placeholder="Ex: Domingo: 5h30 - 13h30"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 text-sm"
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Formato: &quot;Texto: XhYZ - XhYZ&quot; — ex: &quot;Seg a Sab: 5h30 - 20h30&quot;
               </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Domingo / Feriados
-              </label>
-              <input
-                type="text"
-                value={horarioDomingo}
-                onChange={(e) => setHorarioDomingo(e.target.value)}
-                placeholder="Ex: Domingo: 5h30 - 13h30"
-                className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Formato: "Texto: XhYZ - XhYZ" (ex: "Domingo: 5h30 - 13h30")
-              </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-gray-400 mb-1">📅 Semana</p>
+                <p className="text-sm font-bold text-gray-900">{horarioSemana}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs font-medium text-gray-400 mb-1">🎉 Domingo</p>
+                <p className="text-sm font-bold text-gray-900">{horarioDomingo}</p>
+              </div>
             </div>
-            <p className="text-xs text-blue-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
-              💡 Essas informações aparecem no rodapé do cardápio público e determinam o status "aberto/fechado".
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-100">
-              <p className="text-xs font-medium text-gray-500 mb-2">📅 Dias de semana</p>
-              <p className="text-lg font-semibold text-gray-900">{horarioSemana}</p>
-            </div>
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-100">
-              <p className="text-xs font-medium text-gray-500 mb-2">🎉 Domingo / Feriados</p>
-              <p className="text-lg font-semibold text-gray-900">{horarioDomingo}</p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Info Section */}
-      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-        <h4 className="font-bold text-gray-900 mb-3">ℹ️ Informações</h4>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li>✓ Os horários aparecem no rodapé do seu cardápio público</li>
-          <li>✓ O status "aberto/fechado" é atualizado automaticamente baseado na hora atual</li>
-          <li>✓ Use o formato: "Seg a Sab: 5h30 - 20h30"</li>
-          <li>✓ O minuto é opcional (ex: "5h - 20h" também funciona)</li>
-        </ul>
-      </div>
+      {/* Nota informativa */}
+      <p className="text-xs text-gray-400 text-center px-4">
+        Os horários aparecem no rodapé do cardápio e determinam o status aberto/fechado automaticamente.
+      </p>
     </div>
   );
 }
