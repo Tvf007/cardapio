@@ -167,8 +167,7 @@ export function useSyncedData(): SyncedDataState & {
 
       if (!mountedRef.current) return;
 
-      // NÃO filtrar categorias aqui! Precisamos manter TODAS para sincronização
-      // Apenas filtrar produtos e logo, e ordenar categorias
+      // Filtrar produtos de sistema e logo
       let logo: string | null = null;
       const visibleProducts = data.products.filter((p) => {
         if (p.id === LOGO_ITEM_ID) {
@@ -184,10 +183,10 @@ export function useSyncedData(): SyncedDataState & {
         return true;
       });
 
-      // Ordenar todas as categorias pelo campo order, MAS NÃO REMOVER as ocultas
-      const categories = [...data.categories].sort(
-        (a, b) => (a.order ?? 999) - (b.order ?? 999)
-      );
+      // Filtrar categoria __hidden__ e ordenar pelo campo order
+      const categories = [...data.categories]
+        .filter((c) => c.id !== HIDDEN_CATEGORY_ID)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       const products = visibleProducts;
 
       // Fallback localStorage apenas se Supabase não retornou logo
@@ -276,8 +275,7 @@ export function useSyncedData(): SyncedDataState & {
     try {
       const cached = loadFromLocalStorage();
       if (cached.categories.length > 0 || cached.products.length > 0) {
-        // NÃO filtrar categorias do cache! Precisamos de TODAS para sincronização
-        // Apenas filtrar produtos e logo
+        // Filtrar produtos e logo do cache
         let logo = cached.logo;
         const visibleProducts = cached.products.filter((p) => {
           if (p.id === LOGO_ITEM_ID) {
@@ -293,10 +291,10 @@ export function useSyncedData(): SyncedDataState & {
           return true;
         });
 
-        // Ordenar categorias mas manter TODAS (incluindo ocultas)
-        const sortedCategories = [...cached.categories].sort(
-          (a, b) => (a.order ?? 999) - (b.order ?? 999)
-        );
+        // Filtrar categoria __hidden__ e ordenar
+        const sortedCategories = [...cached.categories]
+          .filter((c) => c.id !== HIDDEN_CATEGORY_ID)
+          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
         setState((prev) => ({
           ...prev,

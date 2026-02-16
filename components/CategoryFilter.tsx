@@ -9,6 +9,25 @@ interface CategoryFilterProps {
   onCategoryChange: (categoryId: string | null) => void;
 }
 
+// Emojis por categoria (baseado no nome)
+function getCategoryEmoji(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("pão") || lower.includes("pao") || lower.includes("paes") || lower.includes("pães")) return "🍞";
+  if (lower.includes("bolo") || lower.includes("torta")) return "🎂";
+  if (lower.includes("doce") || lower.includes("sobremesa") || lower.includes("confeit")) return "🍰";
+  if (lower.includes("salgado") || lower.includes("lanche") || lower.includes("sanduíche") || lower.includes("sanduiche")) return "🥪";
+  if (lower.includes("bebida") || lower.includes("suco") || lower.includes("refrigerante")) return "🥤";
+  if (lower.includes("café") || lower.includes("cafe")) return "☕";
+  if (lower.includes("pizza")) return "🍕";
+  if (lower.includes("porção") || lower.includes("porcao") || lower.includes("porções")) return "🍟";
+  if (lower.includes("açaí") || lower.includes("acai")) return "🫐";
+  if (lower.includes("sorvete") || lower.includes("gelado")) return "🍦";
+  if (lower.includes("fruta")) return "🍓";
+  if (lower.includes("fit") || lower.includes("salada") || lower.includes("integral")) return "🥗";
+  if (lower.includes("promoção") || lower.includes("promocao") || lower.includes("destaque") || lower.includes("oferta")) return "⭐";
+  return "🍽️";
+}
+
 // PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
 export const CategoryFilter = memo(function CategoryFilter({
   categories,
@@ -50,41 +69,43 @@ export const CategoryFilter = memo(function CategoryFilter({
     <div className="relative">
       {/* Gradiente fade esquerda */}
       {showLeftFade && (
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
       )}
 
       {/* Gradiente fade direita */}
       {showRightFade && (
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-[#fdf6ee] to-transparent z-10 pointer-events-none" />
       )}
 
       <div
         ref={scrollRef}
-        className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide"
+        className="flex gap-2.5 overflow-x-auto pb-3 scrollbar-hide"
       >
+        {/* Botão "Todos" */}
         <button
           onClick={handleAll}
-          className={`category-btn px-5 py-2.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0 text-sm transition-all ${
-            activeCategory === null
-              ? "active bg-[#7c4e42] text-white shadow-md"
-              : "bg-white text-gray-600 hover:bg-amber-50 border border-gray-200 hover:border-[#d4a574]"
+          className={`category-chip flex-shrink-0 ${
+            activeCategory === null ? "category-chip-active" : "category-chip-inactive"
           }`}
         >
-          Todos
+          <span className="category-chip-emoji">🏠</span>
+          <span>Todos</span>
         </button>
+
+        {/* Botões de cada categoria */}
         {categories.map((category) => {
           const isActive = activeCategory === category.id;
+          const emoji = getCategoryEmoji(category.name);
           return (
             <button
               key={category.id}
               onClick={() => onCategoryChange(category.id)}
-              className={`category-btn px-5 py-2.5 rounded-full font-semibold whitespace-nowrap flex-shrink-0 text-sm transition-all ${
-                isActive
-                  ? "active bg-[#7c4e42] text-white shadow-md"
-                  : "bg-white text-gray-600 hover:bg-amber-50 border border-gray-200 hover:border-[#d4a574]"
+              className={`category-chip flex-shrink-0 ${
+                isActive ? "category-chip-active" : "category-chip-inactive"
               }`}
             >
-              {category.name}
+              <span className="category-chip-emoji">{emoji}</span>
+              <span>{category.name}</span>
             </button>
           );
         })}

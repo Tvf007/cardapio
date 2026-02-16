@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { MenuItem as MenuItemType, Category } from "@/lib/validation";
-import { MenuItem, getCategoryColor, getCategoryName } from "./MenuItem";
+import { MenuItem, getCategoryName } from "./MenuItem";
 
 interface MenuGridProps {
   items: MenuItemType[];
@@ -88,16 +88,12 @@ export const MenuGrid = memo(function MenuGrid({ items, categories, showCategory
   return (
     <div className="space-y-2">
       {groupedItems.map((group) => {
-        const color = getCategoryColor(group.category.name);
         const emoji = getCategoryEmoji(group.category.name);
 
         return (
           <div key={group.category.id}>
-            {/* Separador de categoria */}
-            <div
-              className="category-divider"
-              style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}
-            >
+            {/* Separador de categoria - cor azul padronizada */}
+            <div className="category-divider">
               <h3>
                 <span className="text-lg">{emoji}</span>
                 {group.category.name}
