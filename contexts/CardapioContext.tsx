@@ -101,7 +101,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
 
         // Melhorar mensagem de erro
         const errorMsg = error instanceof Error ? error.message : "Erro ao sincronizar";
-        if (errorMsg.includes("muito grande") || errorMsg.includes("700KB") || errorMsg.includes("500KB")) {
+        if (errorMsg.includes("muito grande") || errorMsg.includes("1500KB") || errorMsg.includes("700KB") || errorMsg.includes("500KB")) {
           throw new Error("Imagem muito grande para sincronizar. Tente comprimir a imagem ou reduzir sua qualidade.");
         }
         throw error;

@@ -301,7 +301,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tamanho das imagens com cálculo preciso e tolerância
-    const maxImageSizeKB = 700;
+    // Aumentado de 700KB para 1500KB para suportar fotos de iPhone/Android
+    // (após compressão JPEG + resize 1200x1200, fotos ficam ~100-800KB)
+    const maxImageSizeKB = 1500;
     const imageValidationErrors: string[] = [];
 
     for (const product of products) {

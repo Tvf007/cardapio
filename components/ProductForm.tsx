@@ -88,11 +88,11 @@ export function ProductForm({
       return;
     }
 
-    // Validar tamanho do arquivo (máximo 5MB)
-    const maxFileSizeMB = 5;
+    // Validar tamanho do arquivo (máximo 10MB - fotos de iPhone/Android)
+    const maxFileSizeMB = 10;
     const fileSizeInMB = file.size / (1024 * 1024);
     if (fileSizeInMB > maxFileSizeMB) {
-      toast.error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB. Seu arquivo: ${fileSizeInMB.toFixed(2)}MB`);
+      toast.error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB. Seu arquivo: ${fileSizeInMB.toFixed(1)}MB`);
       return;
     }
 
@@ -124,11 +124,11 @@ export function ProductForm({
       // Qualidade de 0.9 para melhor resultado visual com imagens de alimentos
       const result = canvas.toDataURL("image/jpeg", 0.9);
 
-      // Validar tamanho do base64 resultante (máximo 700KB, alinhado com backend)
+      // Validar tamanho do base64 resultante (máximo 1500KB, alinhado com backend)
       // SINCRONIZADO: Usar função getExactBase64SizeKB() idêntica ao backend
       const base64SizeInKB = getExactBase64SizeKB(result);
-      if (base64SizeInKB > 700) {
-        toast.error(`Imagem muito pesada (${base64SizeInKB.toFixed(0)}KB). Máximo: 700KB. Tente uma imagem menor ou de qualidade inferior.`);
+      if (base64SizeInKB > 1500) {
+        toast.error(`Imagem muito pesada (${base64SizeInKB.toFixed(0)}KB). Máximo: 1500KB. Tente uma imagem menor ou de qualidade inferior.`);
         return;
       }
 

@@ -47,7 +47,7 @@ export interface ApiResponse<T> {
 
 const API_CONFIG = {
   baseTimeout: 5000,
-  syncTimeout: 90000, // 90s para operações de sync (suporta imagens 700KB+ em conexões lentas)
+  syncTimeout: 90000, // 90s para operações de sync (suporta imagens grandes em conexões lentas)
   maxRetries: 3,
   initialRetryDelay: 1000,
   syncEndpoint: "/api/sync",
@@ -433,7 +433,7 @@ export async function syncToSupabase(
   });
 
   // TIMEOUT PROTECTION: Garantir que a Promise sempre resolve ou rejeita
-  // 60 segundos é necessário para imagens grandes (700KB+) em conexões lentas
+  // 60 segundos é necessário para imagens grandes em conexões lentas
   const timeoutPromise = new Promise<void>((_, reject) => {
     const timeoutId = setTimeout(() => {
       reject(new Error("Operação de sincronização expirou. Verifique sua conexão de internet e tente novamente."));
@@ -522,7 +522,7 @@ async function executeSyncTo(
     };
 
     // FIX CRÍTICO: Usar timeout maior (90s) para operações de sync com imagens grandes
-    // A razão: imagem 700KB + JSON serialization + transmissão em conexão lenta
+    // A razão: imagens grandes + JSON serialization + transmissão em conexão lenta
     // = pode facilmente levar > 30s em condições reais
     const bodySize = JSON.stringify(bodyToSend).length;
     logger.debug("API", "Tamanho do body:", { bytes: bodySize, kb: Math.round(bodySize / 1024) });
