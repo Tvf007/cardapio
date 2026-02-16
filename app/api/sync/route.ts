@@ -446,14 +446,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Fase de upsert
-    if (validatedCategories.length > 0) {
+    // CRITICAL FIX: Deduplicar por ID antes do upsert
+    // PostgreSQL rejeita ON CONFLICT DO UPDATE se o mesmo ID aparece 2x no mesmo comando
+    // Causa: estado do React pode conter duplicados em edge cases (cache + server merge)
+    // Solução: Map com ID como chave - último valor ganha (mais recente)
+    const deduplicatedCategories = validatedCategories.length > 0
+      ? [...new Map((validatedCategories as Record<string, unknown>[]).map(c => [c.id, c])).values()]
+      : [];
+    const deduplicatedProducts = validatedProducts.length > 0
+      ? [...new Map((validatedProducts as Record<string, unknown>[]).map(p => [(p as Record<string, unknown>).id, p])).values()]
+      : [];
+
+    if (deduplicatedCategories.length !== validatedCategories.length) {
+      console.warn(`[SYNC] ⚠️ Categorias duplicadas removidas: ${validatedCategories.length} → ${deduplicatedCategories.length}`);
+    }
+    if (deduplicatedProducts.length !== (validatedProducts as unknown[]).length) {
+      console.warn(`[SYNC] ⚠️ Produtos duplicados removidos: ${(validatedProducts as unknown[]).length} → ${deduplicatedProducts.length}`);
+    }
+
+    if (deduplicatedCategories.length > 0) {
       const { error } = await supabase
         .from("categories")
-        .upsert(validatedCategories, { onConflict: "id" });
+        .upsert(deduplicatedCategories, { onConflict: "id" });
       if (error) throw error;
     }
 
-    if (validatedProducts.length > 0) {
+    if (deduplicatedProducts.length > 0) {
       try {
         // Usar batch processing com timeout para evitar travamento
         // Batch size: 100 produtos por vez
@@ -461,7 +479,7 @@ export async function POST(request: NextRequest) {
         await upsertWithBatches(
           supabase,
           "menu_items",
-          validatedProducts,
+          deduplicatedProducts,
           100,
           15000
         );
@@ -477,8 +495,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Dados sincronizados com sucesso!",
-      categoriesCount: validatedCategories.length,
-      productsCount: validatedProducts.length,
+      categoriesCount: deduplicatedCategories.length,
+      productsCount: deduplicatedProducts.length,
       deletedCategories: categoriesToDelete.length,
       deletedProducts: productsToDelete.length,
     });

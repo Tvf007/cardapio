@@ -135,6 +135,7 @@ export function sanitizeProducts(products: any[]): MenuItem[] {
 /**
  * Valida e sanitiza dados antes de sincronizar
  * Retorna dados limpos e prontos para enviar ao backend
+ * Inclui deduplicação por ID para evitar erro PostgreSQL ON CONFLICT
  */
 export function validateAndSanitizeSyncData(
   products: any,
@@ -144,9 +145,14 @@ export function validateAndSanitizeSyncData(
     const sanitizedCategories = sanitizeCategories(categories);
     const sanitizedProducts = sanitizeProducts(products);
 
+    // Deduplicar por ID (último ganha) para evitar erro PostgreSQL:
+    // "ON CONFLICT DO UPDATE command cannot affect row a second time"
+    const dedupCategories = [...new Map(sanitizedCategories.map(c => [c.id, c])).values()];
+    const dedupProducts = [...new Map(sanitizedProducts.map(p => [p.id, p])).values()];
+
     return {
-      products: sanitizedProducts,
-      categories: sanitizedCategories,
+      products: dedupProducts,
+      categories: dedupCategories,
     };
   } catch (error) {
     throw error;
