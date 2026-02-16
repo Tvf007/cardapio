@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { AdminLogin } from "@/components/AdminLogin";
 import { QRCodeModal } from "@/components/QRCodeModal";
-import { RippleButton } from "@/components/RippleButton";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
 import { loginWithPassword, logout, getCurrentUser, AuthUser } from "@/lib/auth";
@@ -13,6 +13,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const router = useRouter();
   const toast = useToast();
   const cardapio = useCardapio();
@@ -24,7 +25,6 @@ export default function AdminPage() {
       setUser(currentUser);
       setLoading(false);
     };
-
     loadUser();
   }, []);
 
@@ -32,12 +32,10 @@ export default function AdminPage() {
     try {
       setLoading(true);
       const result = await loginWithPassword(password);
-
       if (result.error) {
         toast.error(result.error);
         return;
       }
-
       if (result.user) {
         setUser(result.user);
         toast.success("Login realizado com sucesso!");
@@ -53,18 +51,30 @@ export default function AdminPage() {
     try {
       await logout();
       setUser(null);
-      toast.success("Logout realizado com sucesso");
+      toast.success("Logout realizado");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao fazer logout");
     }
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await cardapio.refresh();
+      toast.success("Sincronizado!");
+    } catch {
+      toast.error("Erro ao sincronizar");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+      <div className="min-h-screen flex items-center justify-center warm-pattern-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-700 font-semibold">Carregando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7c4e42] mx-auto mb-4"></div>
+          <p className="text-gray-500 text-sm font-medium">Carregando...</p>
         </div>
       </div>
     );
@@ -76,149 +86,97 @@ export default function AdminPage() {
 
   const cardapioUrl = typeof window !== "undefined" ? window.location.origin : "";
 
-  // Cards do dashboard
-  const dashboardCards = [
-    {
-      id: "categorias",
-      title: "Categorias",
-      icon: "📁",
-      subtitle: `${cardapio.categories.length} categorias`,
-      description: "Gerenciar categorias de produtos",
-      color: "from-green-50 to-emerald-50",
-      borderColor: "border-green-200",
-      action: () => router.push("/admin/categorias"),
-    },
-    {
-      id: "produtos",
-      title: "Produtos",
-      icon: "🍽️",
-      subtitle: `${cardapio.products.length} produtos`,
-      description: "Adicionar, editar ou remover produtos",
-      color: "from-yellow-50 to-orange-50",
-      borderColor: "border-yellow-200",
-      action: () => router.push("/admin/produtos"),
-    },
-    {
-      id: "horarios",
-      title: "Horários",
-      icon: "🕐",
-      subtitle: "Configurar horários",
-      description: "Defina os horários de funcionamento",
-      color: "from-blue-50 to-cyan-50",
-      borderColor: "border-blue-200",
-      action: () => router.push("/admin/horarios"),
-    },
-    {
-      id: "imagens",
-      title: "Imagens",
-      icon: "🖼️",
-      subtitle: "Logo e backgrounds",
-      description: "Gerenciar imagens do cardápio",
-      color: "from-pink-50 to-rose-50",
-      borderColor: "border-pink-200",
-      action: () => router.push("/admin/imagens"),
-    },
-    {
-      id: "qrcode",
-      title: "QR Code",
-      icon: "🔗",
-      subtitle: "Compartilhe seu cardápio",
-      description: "Visualizar e baixar QR Code",
-      color: "from-purple-50 to-indigo-50",
-      borderColor: "border-purple-200",
-      action: () => setShowQRCodeModal(true),
-    },
-    {
-      id: "sincronizacao",
-      title: "Sincronização",
-      icon: "☁️",
-      subtitle: cardapio.lastSync
-        ? `Última: ${new Date(cardapio.lastSync).toLocaleTimeString("pt-BR")}`
-        : "Aguardando...",
-      description: cardapio.loading ? "Sincronizando..." : "Status da sincronização",
-      color: "from-gray-50 to-slate-50",
-      borderColor: "border-gray-200",
-      action: () => cardapio.refresh(),
-    },
+  const menuItems = [
+    { id: "categorias", icon: "📁", label: "Categorias", action: () => router.push("/admin/categorias") },
+    { id: "produtos", icon: "🍽️", label: "Produtos", action: () => router.push("/admin/produtos") },
+    { id: "horarios", icon: "🕐", label: "Horários", action: () => router.push("/admin/horarios") },
+    { id: "imagens", icon: "🖼️", label: "Imagens", action: () => router.push("/admin/imagens") },
+    { id: "qrcode", icon: "📱", label: "QR Code", action: () => setShowQRCodeModal(true) },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              <div className="relative w-14 h-14 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: "#7c4e42" }}
-              >
-                {logo ? (
-                  <img
-                    src={logo}
-                    alt="Logo"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <span className="text-2xl sm:text-3xl">🍞</span>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">Gerenciador do Cardápio Freitas</h1>
-                <p className="text-sm text-gray-600 truncate">
-                  Painel Admin - <span className="font-semibold">{user.email}</span>
-                </p>
-              </div>
+    <div className="min-h-screen warm-pattern-bg">
+      {/* ===== HEADER IGUAL AO CARDÁPIO PÚBLICO ===== */}
+      <header className="header-banner">
+        {/* Imagem de capa (logo como background sutil) */}
+        {logo && (
+          <Image
+            src={logo}
+            alt=""
+            fill
+            className="header-cover-image"
+            aria-hidden="true"
+            priority
+          />
+        )}
+
+        <div className="relative z-10 px-4 pt-8 pb-6 text-center">
+          <div className="flex flex-col items-center gap-2">
+            {/* Logo circular — MESMO do cardápio público */}
+            <div className="logo-circle">
+              {logo ? (
+                <Image
+                  src={logo}
+                  alt="Logo"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <span className="text-4xl">🍞</span>
+              )}
             </div>
-            <RippleButton
-              onClick={handleLogout}
-              className="bg-red-500 text-white px-3 sm:px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200 shadow-md hover:shadow-lg whitespace-nowrap text-sm sm:text-base flex-shrink-0"
-            >
-              Sair
-            </RippleButton>
+
+            {/* Título */}
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
+              Gerenciador de Cardápio
+            </h1>
           </div>
+
+          {/* Botão sair — discreto no canto */}
+          <button
+            onClick={handleLogout}
+            className="absolute top-4 right-4 text-white/40 hover:text-white text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all z-20"
+          >
+            Sair
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
-          <p className="text-gray-600">Bem-vindo ao painel de administração do seu cardápio</p>
-        </div>
-
-        {/* Dashboard Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {dashboardCards.map((card) => (
+      {/* ===== CARDS CENTRALIZADOS ===== */}
+      <main className="max-w-md mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 gap-4">
+          {menuItems.map((item, index) => (
             <button
-              key={card.id}
-              onClick={card.action}
-              className={`bg-gradient-to-br ${card.color} border ${card.borderColor} rounded-2xl p-6 shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-200 text-left group`}
+              key={item.id}
+              onClick={item.action}
+              className="admin-card"
+              style={{ animationDelay: `${index * 0.07}s` }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="text-5xl group-hover:scale-110 transition-transform duration-200">
-                  {card.icon}
-                </div>
-                {card.id === "sincronizacao" && cardapio.loading && (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                )}
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">{card.title}</h3>
-              <p className="text-sm text-gray-600 mb-3">{card.subtitle}</p>
-              <p className="text-xs text-gray-500">{card.description}</p>
+              <span className="admin-card-icon">{item.icon}</span>
+              <span className="admin-card-title">{item.label}</span>
             </button>
           ))}
-        </div>
 
-        {/* Info Section */}
-        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">💡 Dicas Úteis</h3>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>✓ Crie <strong>categorias</strong> para organizar seus produtos</li>
-            <li>✓ Adicione <strong>produtos</strong> com descrição, preço e imagem</li>
-            <li>✓ Configure seus <strong>horários</strong> de funcionamento</li>
-            <li>✓ Customize com suas <strong>imagens</strong> (logo e background)</li>
-            <li>✓ Compartilhe o <strong>QR Code</strong> com seus clientes</li>
-          </ul>
+          {/* Sincronização — com info extra de status */}
+          <button
+            onClick={handleSync}
+            className="admin-card"
+            style={{ animationDelay: `${menuItems.length * 0.07}s` }}
+          >
+            {(syncing || cardapio.loading) && (
+              <div className="absolute top-3 right-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+            <span className={`admin-card-icon ${syncing ? "animate-spin" : ""}`}>☁️</span>
+            <span className="admin-card-title">Sincronização</span>
+            <span className="admin-card-count">
+              {cardapio.lastSync
+                ? new Date(cardapio.lastSync).toLocaleTimeString("pt-BR")
+                : "Aguardando..."}
+            </span>
+          </button>
         </div>
       </main>
 

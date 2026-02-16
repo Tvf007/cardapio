@@ -618,3 +618,160 @@ body {
 .footer-gradient {
   background: linear-gradient(135deg, #3d2720, #2a1b15);
 }
+
+/* ========== ADMIN PANEL ========== */
+
+/* Header do admin com banner igual ao cardápio */
+.admin-banner {
+  position: relative;
+  background: linear-gradient(135deg, #7c4e42, #5a3a2f, #3d2720);
+  overflow: hidden;
+  padding: 20px 16px;
+}
+
+.admin-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4a574' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+/* Logo pequena no header admin */
+.admin-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  overflow: hidden;
+  background: linear-gradient(135deg, #d4a574, #7c4e42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.admin-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Cards do dashboard */
+.admin-card {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  padding: 24px 16px;
+  border: 1.5px solid #f0f0f0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.admin-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(90deg, #7c4e42, #d4a574);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.admin-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(124, 78, 66, 0.12),
+              0 4px 8px rgba(0,0,0,0.04);
+  border-color: #d4a574;
+}
+
+.admin-card:hover::after {
+  opacity: 1;
+}
+
+.admin-card:active {
+  transform: translateY(-2px) scale(0.97);
+}
+
+.admin-card-icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: block;
+}
+
+.admin-card:hover .admin-card-icon {
+  transform: scale(1.2) rotate(-5deg);
+}
+
+.admin-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: 0.01em;
+}
+
+.admin-card-count {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+/* Animação de entrada dos cards */
+.admin-card {
+  animation: adminCardIn 0.5s ease-out backwards;
+}
+
+.admin-card:nth-child(1) { animation-delay: 0.0s; }
+.admin-card:nth-child(2) { animation-delay: 0.07s; }
+.admin-card:nth-child(3) { animation-delay: 0.14s; }
+.admin-card:nth-child(4) { animation-delay: 0.21s; }
+.admin-card:nth-child(5) { animation-delay: 0.28s; }
+.admin-card:nth-child(6) { animation-delay: 0.35s; }
+
+@keyframes adminCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Botão voltar no header admin */
+.admin-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(4px);
+}
+
+.admin-back-btn:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateX(-2px);
+}
