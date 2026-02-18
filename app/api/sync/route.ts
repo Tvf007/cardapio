@@ -300,21 +300,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar tamanho das imagens com cálculo preciso e tolerância
-    // Aumentado de 700KB para 1500KB para suportar fotos de iPhone/Android
-    // (após compressão JPEG + resize 1200x1200, fotos ficam ~100-800KB)
+    // Validar tamanho das imagens
+    // URLs (Supabase Storage) são aceitas sem validação de tamanho
+    // Base64 (legado) ainda validado com limite de 1500KB
     const maxImageSizeKB = 1500;
     const imageValidationErrors: string[] = [];
 
     for (const product of products) {
       const prod = product as Record<string, unknown>;
       if (prod.image && typeof prod.image === "string") {
-        const validation = isImageSizeValid(prod.image, maxImageSizeKB);
+        const imageStr = prod.image as string;
 
-        if (!validation.valid) {
-          imageValidationErrors.push(
-            `"${String(prod.name || prod.id)}": ${validation.message}`
-          );
+        // URLs externas (Supabase Storage) — aceitar sem validação
+        if (imageStr.startsWith("http://") || imageStr.startsWith("https://")) {
+          continue;
+        }
+
+        // Base64 (legado) — validar tamanho
+        if (imageStr.startsWith("data:")) {
+          const validation = isImageSizeValid(imageStr, maxImageSizeKB);
+          if (!validation.valid) {
+            imageValidationErrors.push(
+              `"${String(prod.name || prod.id)}": ${validation.message}`
+            );
+          }
         }
       }
     }

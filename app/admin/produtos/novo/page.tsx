@@ -6,50 +6,7 @@ import { v4 as uuid } from "uuid";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
 import { MenuItem } from "@/lib/validation";
-
-function compressProductImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) {
-      reject(new Error("Selecione um arquivo de imagem válido"));
-      return;
-    }
-    const maxFileSizeMB = 10;
-    if (file.size / (1024 * 1024) > maxFileSizeMB) {
-      reject(new Error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB.`));
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    img.onload = () => {
-      const maxW = 1200, maxH = 1200;
-      let { width, height } = img;
-      if (width > height) { if (width > maxW) { height = Math.round((height * maxW) / width); width = maxW; } }
-      else { if (height > maxH) { width = Math.round((width * maxH) / height); height = maxH; } }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      let result = canvas.toDataURL("image/jpeg", 0.85);
-      let sizeKB = (result.length * 3) / 4 / 1024;
-      if (sizeKB > 1500) {
-        result = canvas.toDataURL("image/jpeg", 0.6);
-        sizeKB = (result.length * 3) / 4 / 1024;
-      }
-      if (sizeKB > 1500) { reject(new Error("Imagem muito pesada após compressão.")); return; }
-      resolve(result);
-    };
-
-    img.onerror = () => reject(new Error("Erro ao carregar imagem"));
-    const reader = new FileReader();
-    reader.onload = (ev) => { img.src = ev.target?.result as string; };
-    reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-    reader.readAsDataURL(file);
-  });
-}
+import { uploadImage } from "@/lib/upload";
 
 export default function NovoProdutoPage() {
   const router = useRouter();
@@ -63,15 +20,21 @@ export default function NovoProdutoPage() {
   const [image, setImage] = useState("");
   const [available, setAvailable] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const handleImageChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setUploading(true);
     try {
-      const compressed = await compressProductImage(file);
-      setImage(compressed);
+      const result = await uploadImage(file, "products");
+      setImage(result.url);
+      toast.success(`Imagem processada (${result.sizeKB}KB)`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
+    } finally {
+      setUploading(false);
     }
   }, [toast]);
 
@@ -124,15 +87,20 @@ export default function NovoProdutoPage() {
                   ✕
                 </button>
               </div>
+            ) : uploading ? (
+              <div className="py-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c4e42] mx-auto mb-3"></div>
+                <p className="text-sm font-medium text-gray-500">Comprimindo imagem...</p>
+              </div>
             ) : (
               <div className="py-12 text-center">
                 <span className="text-4xl block mb-2">📸</span>
                 <p className="text-sm font-medium text-gray-500">Toque para adicionar foto</p>
-                <p className="text-xs text-gray-400 mt-1">Opcional • até 10MB</p>
+                <p className="text-xs text-gray-400 mt-1">Opcional • até 10MB • compressão automática</p>
               </div>
             )}
           </div>
-          <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+          <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={uploading} />
         </label>
       </div>
 
@@ -196,7 +164,7 @@ export default function NovoProdutoPage() {
           onClick={() => setAvailable(!available)}
           className={`w-12 h-7 rounded-full transition-all relative ${available ? "bg-green-500" : "bg-gray-300"}`}
         >
-          <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all ${available ? "left-5.5" : "left-0.5"}`}
+          <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all"
             style={{ left: available ? "22px" : "2px" }}
           />
         </button>
@@ -206,7 +174,7 @@ export default function NovoProdutoPage() {
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || uploading}
           className="flex-1 bg-[#7c4e42] text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-[#5a3a2f] transition-all disabled:opacity-50 shadow-lg"
         >
           {saving ? (

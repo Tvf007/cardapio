@@ -5,50 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
 import { MenuItem } from "@/lib/validation";
-
-function compressProductImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) {
-      reject(new Error("Selecione um arquivo de imagem válido"));
-      return;
-    }
-    const maxFileSizeMB = 10;
-    if (file.size / (1024 * 1024) > maxFileSizeMB) {
-      reject(new Error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB.`));
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    img.onload = () => {
-      const maxW = 1200, maxH = 1200;
-      let { width, height } = img;
-      if (width > height) { if (width > maxW) { height = Math.round((height * maxW) / width); width = maxW; } }
-      else { if (height > maxH) { width = Math.round((width * maxH) / height); height = maxH; } }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      let result = canvas.toDataURL("image/jpeg", 0.85);
-      let sizeKB = (result.length * 3) / 4 / 1024;
-      if (sizeKB > 1500) {
-        result = canvas.toDataURL("image/jpeg", 0.6);
-        sizeKB = (result.length * 3) / 4 / 1024;
-      }
-      if (sizeKB > 1500) { reject(new Error("Imagem muito pesada após compressão.")); return; }
-      resolve(result);
-    };
-
-    img.onerror = () => reject(new Error("Erro ao carregar imagem"));
-    const reader = new FileReader();
-    reader.onload = (ev) => { img.src = ev.target?.result as string; };
-    reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-    reader.readAsDataURL(file);
-  });
-}
+import { uploadImage } from "@/lib/upload";
 
 export default function EditarProdutoPage() {
   const router = useRouter();
@@ -66,9 +23,9 @@ export default function EditarProdutoPage() {
   const [image, setImage] = useState("");
   const [available, setAvailable] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Carregar dados do produto
   useEffect(() => {
     if (existingProduct && !loaded) {
       setName(existingProduct.name);
@@ -84,11 +41,16 @@ export default function EditarProdutoPage() {
   const handleImageChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setUploading(true);
     try {
-      const compressed = await compressProductImage(file);
-      setImage(compressed);
+      const result = await uploadImage(file, "products");
+      setImage(result.url);
+      toast.success(`Imagem processada (${result.sizeKB}KB)`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao processar imagem");
+    } finally {
+      setUploading(false);
     }
   }, [toast]);
 
@@ -129,10 +91,7 @@ export default function EditarProdutoPage() {
       <div className="text-center py-16">
         <span className="text-5xl block mb-3">❓</span>
         <p className="text-gray-500 font-medium text-sm">Produto não encontrado</p>
-        <button
-          onClick={() => router.push("/admin/produtos")}
-          className="mt-4 text-[#7c4e42] font-semibold text-sm hover:underline"
-        >
+        <button onClick={() => router.push("/admin/produtos")} className="mt-4 text-[#7c4e42] font-semibold text-sm hover:underline">
           Voltar para produtos
         </button>
       </div>
@@ -156,52 +115,42 @@ export default function EditarProdutoPage() {
                   ✕
                 </button>
               </div>
+            ) : uploading ? (
+              <div className="py-12 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c4e42] mx-auto mb-3"></div>
+                <p className="text-sm font-medium text-gray-500">Comprimindo imagem...</p>
+              </div>
             ) : (
               <div className="py-12 text-center">
                 <span className="text-4xl block mb-2">📸</span>
                 <p className="text-sm font-medium text-gray-500">Toque para adicionar foto</p>
-                <p className="text-xs text-gray-400 mt-1">Opcional • até 10MB</p>
+                <p className="text-xs text-gray-400 mt-1">Opcional • até 10MB • compressão automática</p>
               </div>
             )}
           </div>
-          <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+          <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={uploading} />
         </label>
       </div>
 
       {/* Nome */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Nome</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: Pão Francês"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
-        />
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Pão Francês"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm" />
       </div>
 
       {/* Preço */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Preço (R$)</label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="0,00"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
-        />
+        <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00"
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm" />
       </div>
 
       {/* Categoria */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Categoria</label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
-        >
+        <select value={category} onChange={(e) => setCategory(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm">
           {cardapio.categories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
@@ -211,50 +160,33 @@ export default function EditarProdutoPage() {
       {/* Descrição */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Descrição</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Opcional..."
-          rows={3}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 text-sm resize-none"
-        />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional..." rows={3}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 text-sm resize-none" />
       </div>
 
       {/* Disponibilidade */}
       <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
         <span className="text-sm font-medium text-gray-700">Disponível no cardápio</span>
-        <button
-          type="button"
-          onClick={() => setAvailable(!available)}
-          className={`w-12 h-7 rounded-full transition-all relative ${available ? "bg-green-500" : "bg-gray-300"}`}
-        >
+        <button type="button" onClick={() => setAvailable(!available)}
+          className={`w-12 h-7 rounded-full transition-all relative ${available ? "bg-green-500" : "bg-gray-300"}`}>
           <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all"
-            style={{ left: available ? "22px" : "2px" }}
-          />
+            style={{ left: available ? "22px" : "2px" }} />
         </button>
       </div>
 
       {/* Botões */}
       <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex-1 bg-[#7c4e42] text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-[#5a3a2f] transition-all disabled:opacity-50 shadow-lg"
-        >
+        <button type="submit" disabled={saving || uploading}
+          className="flex-1 bg-[#7c4e42] text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-[#5a3a2f] transition-all disabled:opacity-50 shadow-lg">
           {saving ? (
             <span className="flex items-center justify-center gap-2">
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
               Salvando...
             </span>
-          ) : (
-            "Atualizar Produto"
-          )}
+          ) : "Atualizar Produto"}
         </button>
-        <button
-          type="button"
-          onClick={() => router.push("/admin/produtos")}
-          className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all"
-        >
+        <button type="button" onClick={() => router.push("/admin/produtos")}
+          className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all">
           Cancelar
         </button>
       </div>

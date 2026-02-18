@@ -3,45 +3,7 @@
 import { useRef, useCallback, useState } from "react";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
-
-function compressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) { reject(new Error("Selecione um arquivo de imagem válido")); return; }
-
-    const maxFileSizeMB = 10;
-    if (file.size / (1024 * 1024) > maxFileSizeMB) {
-      reject(new Error(`Arquivo muito grande. Máximo ${maxFileSizeMB}MB.`));
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-
-    img.onload = () => {
-      const maxW = 1200, maxH = 1200;
-      let { width, height } = img;
-      if (width > height) { if (width > maxW) { height = Math.round((height * maxW) / width); width = maxW; } }
-      else { if (height > maxH) { width = Math.round((width * maxH) / height); height = maxH; } }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx?.drawImage(img, 0, 0, width, height);
-
-      let result = canvas.toDataURL("image/jpeg", 0.8);
-      let sizeKB = (result.length * 3) / 4 / 1024;
-      if (sizeKB > 1500) { result = canvas.toDataURL("image/jpeg", 0.6); sizeKB = (result.length * 3) / 4 / 1024; }
-      if (sizeKB > 1500) { reject(new Error("Imagem muito pesada após compressão.")); return; }
-      resolve(result);
-    };
-
-    img.onerror = () => reject(new Error("Erro ao carregar imagem"));
-    const reader = new FileReader();
-    reader.onload = (ev) => { img.src = ev.target?.result as string; };
-    reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-    reader.readAsDataURL(file);
-  });
-}
+import { uploadImage } from "@/lib/upload";
 
 export default function ImagensPage() {
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -59,15 +21,14 @@ export default function ImagensPage() {
 
     setUploading(true);
     try {
-      const compressed = await compressImage(file);
+      // Upload via novo sistema (comprime WebP + Supabase Storage)
+      const result = await uploadImage(file, "logo");
 
-      try { localStorage.setItem("padaria-logo", compressed); }
-      catch { toast.error("Erro ao salvar localmente."); return; }
-
+      // Salvar URL no servidor (em vez de base64)
       const response = await fetch("/api/logo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logo: compressed }),
+        body: JSON.stringify({ logo: result.url }),
         credentials: "include",
       });
 
@@ -77,8 +38,11 @@ export default function ImagensPage() {
         return;
       }
 
+      // Salvar localmente também
+      try { localStorage.setItem("padaria-logo", result.url); } catch {}
+
       try { await cardapio.refresh(); } catch {}
-      toast.success("Logo atualizado!");
+      toast.success(`Logo atualizado! (${result.sizeKB}KB)`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao processar");
     } finally {
@@ -108,9 +72,18 @@ export default function ImagensPage() {
           {/* Upload area */}
           <label className="cursor-pointer w-full">
             <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-[#d4a574] hover:bg-[#fdf6ee]/30 transition-all">
-              <span className="text-3xl block mb-2">📤</span>
-              <p className="font-semibold text-gray-700 text-sm">Toque para enviar</p>
-              <p className="text-xs text-gray-400 mt-1">Aceita fotos do celular até 10MB</p>
+              {uploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c4e42] mx-auto mb-3"></div>
+                  <p className="text-sm font-medium text-gray-500">Comprimindo e enviando...</p>
+                </>
+              ) : (
+                <>
+                  <span className="text-3xl block mb-2">📤</span>
+                  <p className="font-semibold text-gray-700 text-sm">Toque para enviar</p>
+                  <p className="text-xs text-gray-400 mt-1">Até 10MB • compressão automática WebP</p>
+                </>
+              )}
             </div>
             <input
               ref={logoInputRef}
@@ -123,19 +96,17 @@ export default function ImagensPage() {
             />
           </label>
 
-          {uploading && (
-            <div className="mt-4 flex items-center gap-2 text-[#7c4e42]">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#7c4e42]"></div>
-              <span className="text-xs font-medium">Enviando...</span>
-            </div>
-          )}
-
           {logo && (
             <button
               onClick={() => {
                 if (confirm("Remover a logo?")) {
                   localStorage.removeItem("padaria-logo");
-                  cardapio.refresh().catch(() => {});
+                  fetch("/api/logo", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ logo: null }),
+                    credentials: "include",
+                  }).then(() => cardapio.refresh().catch(() => {}));
                   toast.success("Logo removida!");
                 }
               }}
@@ -167,7 +138,7 @@ export default function ImagensPage() {
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        Aparece como círculo no header e como fundo • Compressão automática
+        Imagens são comprimidas para WebP automaticamente
       </p>
     </div>
   );
