@@ -219,15 +219,32 @@ export async function GET() {
 
     // Verificar erros com mensagens detalhadas
     if (categoriesResult.error) {
-      console.error("[SYNC GET] Erro ao buscar categorias:", {
-        message: categoriesResult.error.message,
+      const errorMsg = categoriesResult.error.message || String(categoriesResult.error);
+      console.warn("[SYNC GET] Erro ao buscar categorias, verificando fallback:", {
+        message: errorMsg,
         code: categoriesResult.error.code,
-        details: categoriesResult.error.details,
       });
+
+      // Se for erro de quota ou API indisponível, usar fallback
+      if (
+        errorMsg.includes("exceed_egress_quota") ||
+        errorMsg.includes("quota") ||
+        errorMsg.includes("restricted")
+      ) {
+        console.log("[SYNC GET] 🔄 Fallback ativado - Supabase quota exceeded, usando dados estáticos");
+        const { categories: staticCategories, menuItems: staticProducts } = await import(
+          "@/data/menu"
+        );
+        return NextResponse.json({
+          categories: staticCategories,
+          products: staticProducts,
+        });
+      }
+
       return NextResponse.json(
         {
           error: "Erro ao buscar categorias do Supabase",
-          details: categoriesResult.error.message,
+          details: errorMsg,
           code: categoriesResult.error.code,
         },
         { status: 500 }
@@ -235,15 +252,32 @@ export async function GET() {
     }
 
     if (productsResult.error) {
-      console.error("[SYNC GET] Erro ao buscar produtos:", {
-        message: productsResult.error.message,
+      const errorMsg = productsResult.error.message || String(productsResult.error);
+      console.warn("[SYNC GET] Erro ao buscar produtos, verificando fallback:", {
+        message: errorMsg,
         code: productsResult.error.code,
-        details: productsResult.error.details,
       });
+
+      // Se for erro de quota ou API indisponível, usar fallback
+      if (
+        errorMsg.includes("exceed_egress_quota") ||
+        errorMsg.includes("quota") ||
+        errorMsg.includes("restricted")
+      ) {
+        console.log("[SYNC GET] 🔄 Fallback ativado - Supabase quota exceeded, usando dados estáticos");
+        const { categories: staticCategories, menuItems: staticProducts } = await import(
+          "@/data/menu"
+        );
+        return NextResponse.json({
+          categories: staticCategories,
+          products: staticProducts,
+        });
+      }
+
       return NextResponse.json(
         {
           error: "Erro ao buscar produtos do Supabase",
-          details: productsResult.error.message,
+          details: errorMsg,
           code: productsResult.error.code,
         },
         { status: 500 }
