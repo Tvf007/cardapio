@@ -196,10 +196,26 @@ export async function GET() {
     // Buscar categorias e produtos em paralelo
     console.log("[SYNC GET] Iniciando busca de dados do Supabase");
 
-    const [categoriesResult, productsResult] = await Promise.all([
-      supabase.from("categories").select("*"),
-      supabase.from("menu_items").select("*"),
-    ]);
+    // FALLBACK: Se Supabase não estiver disponível, retornar dados estáticos
+    // Este é um band-aid temporário enquanto variáveis de ambiente são configuradas
+    let categoriesResult: any;
+    let productsResult: any;
+
+    try {
+      [categoriesResult, productsResult] = await Promise.all([
+        supabase.from("categories").select("*"),
+        supabase.from("menu_items").select("*"),
+      ]);
+    } catch (supabaseError) {
+      console.warn("[SYNC GET] Fallback ativado - Supabase indisponível, usando dados estáticos", {
+        error: supabaseError instanceof Error ? supabaseError.message : String(supabaseError),
+      });
+
+      // Importar dados estáticos como fallback
+      const { categories: staticCategories, menuItems: staticProducts } = await import("@/data/menu");
+      categoriesResult = { data: staticCategories };
+      productsResult = { data: staticProducts };
+    }
 
     // Verificar erros com mensagens detalhadas
     if (categoriesResult.error) {
