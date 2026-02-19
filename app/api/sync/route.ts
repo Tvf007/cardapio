@@ -194,17 +194,50 @@ async function upsertWithBatches(
 export async function GET() {
   try {
     // Buscar categorias e produtos em paralelo
+    console.log("[SYNC GET] Iniciando busca de dados do Supabase");
+
     const [categoriesResult, productsResult] = await Promise.all([
       supabase.from("categories").select("*"),
       supabase.from("menu_items").select("*"),
     ]);
 
-    if (categoriesResult.error || productsResult.error) {
+    // Verificar erros com mensagens detalhadas
+    if (categoriesResult.error) {
+      console.error("[SYNC GET] Erro ao buscar categorias:", {
+        message: categoriesResult.error.message,
+        code: categoriesResult.error.code,
+        details: categoriesResult.error.details,
+      });
       return NextResponse.json(
-        { error: "Erro ao buscar dados do Supabase" },
+        {
+          error: "Erro ao buscar categorias do Supabase",
+          details: categoriesResult.error.message,
+          code: categoriesResult.error.code,
+        },
         { status: 500 }
       );
     }
+
+    if (productsResult.error) {
+      console.error("[SYNC GET] Erro ao buscar produtos:", {
+        message: productsResult.error.message,
+        code: productsResult.error.code,
+        details: productsResult.error.details,
+      });
+      return NextResponse.json(
+        {
+          error: "Erro ao buscar produtos do Supabase",
+          details: productsResult.error.message,
+          code: productsResult.error.code,
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log("[SYNC GET] ✅ Dados buscados com sucesso", {
+      categoriesCount: (categoriesResult.data || []).length,
+      productsCount: (productsResult.data || []).length,
+    });
 
     const categories = categoriesResult.data || [];
     const products = productsResult.data || [];
@@ -240,9 +273,38 @@ export async function GET() {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : String(error);
-    console.error("[SYNC GET] Erro:", errorMessage);
+    const errorStack = error instanceof Error ? error.stack : "N/A";
+
+    console.error("[SYNC GET] ❌ Erro ao buscar dados:", {
+      message: errorMessage,
+      stack: errorStack,
+      timestamp: new Date().toISOString(),
+      type: typeof error,
+    });
+
+    // Se for erro de variáveis de ambiente
+    if (
+      errorMessage.includes("NEXT_PUBLIC_SUPABASE_URL") ||
+      errorMessage.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+      errorMessage.includes("nao configurada")
+    ) {
+      return NextResponse.json(
+        {
+          error: "Configuração do Supabase incompleta",
+          details: "Variáveis de ambiente não configuradas no Netlify",
+          helpText:
+            "Acesse https://app.netlify.com/projects/cardapio-freitas/settings/build-deploy e configure as variáveis de ambiente",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Erro ao sincronizar dados" },
+      {
+        error: "Erro ao sincronizar dados",
+        details: errorMessage,
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }
