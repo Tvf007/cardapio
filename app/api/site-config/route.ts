@@ -28,9 +28,24 @@ export async function GET(request: NextRequest) {
 
     try {
       const value = JSON.parse(rawValue);
-      return NextResponse.json({ key, value });
+      const response = NextResponse.json({ key, value });
+
+      // Cache config por 6 horas (horários mudam raramente)
+      response.headers.set(
+        "Cache-Control",
+        "public, max-age=21600, stale-while-revalidate=86400"
+      );
+      response.headers.set("X-Cache-Version", "v1");
+
+      return response;
     } catch {
-      return NextResponse.json({ key, value: null });
+      const response = NextResponse.json({ key, value: null });
+      // Cache null response também
+      response.headers.set(
+        "Cache-Control",
+        "public, max-age=3600"
+      );
+      return response;
     }
   } catch (error) {
     console.error("[SiteConfig GET] Erro:", error);

@@ -9,7 +9,16 @@ const LOGO_ID = "__site_logo__";
 export async function GET() {
   try {
     const logo = await getLogo();
-    return NextResponse.json({ logo });
+    const response = NextResponse.json({ logo });
+
+    // Cache logo por 1 hora (muda raramente)
+    response.headers.set(
+      "Cache-Control",
+      "public, max-age=3600, stale-while-revalidate=86400"
+    );
+    response.headers.set("X-Cache-Version", "v1");
+
+    return response;
   } catch {
     return NextResponse.json({ logo: null });
   }

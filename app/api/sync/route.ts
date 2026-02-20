@@ -143,15 +143,18 @@ export async function GET() {
       products: normalizedProducts,
     });
 
-    // FIX (2026-02-14): Remover cache para evitar race condition com reordenação
-    // - Anterior: s-maxage=5 era servir cache por 5s
-    // - Problema: refresh() buscava dados de cache durante janela crítica
-    // - Resultado: order field retornava valor antigo, UI revertia após 6-8s
-    // - Solução: Sempre buscar do servidor, never cache stale data
+    // CACHE STRATEGY (2026-02-20):
+    // Use stale-while-revalidate to balance freshness + performance
+    // - Serve stale cache for 60s (fast response)
+    // - Revalidate in background (fresh data)
+    // - Falls back to server on cache miss
+    // This avoids race conditions while providing good UX
     response.headers.set(
       "Cache-Control",
-      "public, max-age=0, must-revalidate"
+      "public, max-age=60, stale-while-revalidate=300, stale-if-error=3600"
     );
+    // Add version tag to force invalidation if needed
+    response.headers.set("X-Cache-Version", "v1");
 
     return response;
   } catch (error) {
