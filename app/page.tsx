@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import BoasVindasPage from "./boas-vindas/page";
 
 export default function Home() {
-  // Redireciona para a página de boas-vindas
-  redirect("/boas-vindas");
+  return <BoasVindasPage />;
 }
