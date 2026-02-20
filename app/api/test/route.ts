@@ -10,7 +10,7 @@ export async function GET() {
 
   // Tentar criar cliente Turso diretamente
   try {
-    const { createClient } = await import("@libsql/client");
+    const { createClient } = await import("@libsql/client/web");
 
     const url = process.env.TURSO_CONNECTION_URL;
     const token = process.env.TURSO_AUTH_TOKEN;

@@ -1,8 +1,13 @@
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client/web";
 
 /**
- * Cliente Turso SQLite Cloud
+ * Cliente Turso SQLite Cloud (modo HTTP/Web)
  * Substitui Supabase PostgreSQL
+ *
+ * IMPORTANTE: Usa "@libsql/client/web" em vez de "@libsql/client"
+ * porque Netlify serverless não tem bindings nativos (linux-x64-gnu).
+ * O modo web usa HTTP puro, perfeito para serverless.
+ *
  * Benefícios:
  * - 8GB storage (vs 1GB Supabase)
  * - Unlimited egress (vs 10GB/mês limite)
