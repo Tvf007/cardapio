@@ -24,9 +24,8 @@ export function middleware(request: NextRequest) {
 
   // Get client IP from headers (Netlify sets x-forwarded-for)
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0] ||
+    (request.headers.get("x-forwarded-for") as string)?.split(",")[0] ||
     request.headers.get("cf-connecting-ip") ||
-    request.ip ||
     "unknown";
 
   // Define rate limit rules
