@@ -1,55 +1,51 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Logging detalhado para debug em Netlify
-const DEBUG = true;
-
-function logDebug(message: string, data?: unknown) {
-  if (DEBUG) {
-    const timestamp = new Date().toISOString();
-    if (typeof window === "undefined") {
-      // Server-side (Node.js/Netlify)
-      console.log(`[SUPABASE-SERVER ${timestamp}] ${message}`, data || "");
-    } else {
-      // Client-side (Browser)
-      console.log(`[SUPABASE-CLIENT ${timestamp}] ${message}`, data || "");
-    }
-  }
-}
+/**
+ * Cliente Supabase - usado APENAS para:
+ * 1. Supabase Storage (upload de imagens) via supabase-admin.ts
+ * 2. Compatibilidade com frontend hooks (useSyncedData.ts)
+ *
+ * O banco de dados principal agora é Turso SQLite Cloud (lib/turso.ts)
+ * Supabase PostgreSQL foi substituído por Turso para evitar egress quota
+ */
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-logDebug("Inicializando Supabase client", {
-  urlPresente: !!supabaseUrl,
-  urlTamanho: supabaseUrl?.length || 0,
-  keyPresente: !!supabaseAnonKey,
-  keyTamanho: supabaseAnonKey?.length || 0,
-  nodeEnv: process.env.NODE_ENV,
-  runtimeEnv: typeof window === "undefined" ? "server" : "browser",
-});
+// Criar client apenas se as variáveis existirem
+// No servidor, pode não ter (ok, usamos Turso)
+// No browser, precisa ter para compatibilidade temporária
+let supabaseClient: ReturnType<typeof createClient> | null = null;
 
-if (!supabaseUrl) {
-  const error = new Error(
-    "ERRO CRÍTICO: NEXT_PUBLIC_SUPABASE_URL não configurada. " +
-    "Verificar variáveis de ambiente no Netlify dashboard: " +
-    "https://app.netlify.com/projects/cardapio-freitas/settings/build-deploy"
-  );
-  console.error(error.message);
-  throw error;
+if (supabaseUrl && supabaseAnonKey) {
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 }
 
-if (!supabaseAnonKey) {
-  const error = new Error(
-    "ERRO CRÍTICO: NEXT_PUBLIC_SUPABASE_ANON_KEY não configurada. " +
-    "Verificar variáveis de ambiente no Netlify dashboard: " +
-    "https://app.netlify.com/projects/cardapio-freitas/settings/build-deploy"
-  );
-  console.error(error.message);
-  throw error;
+// Export um proxy que não quebra se supabase não estiver configurado
+export const supabase = supabaseClient || createDummyClient();
+
+function createDummyClient() {
+  // Dummy client que retorna erros amigáveis em vez de crashar
+  const handler: ProxyHandler<object> = {
+    get(_target, prop) {
+      if (prop === "channel") {
+        return (name: string) => ({
+          on: () => ({ on: () => ({ subscribe: () => {} }) }),
+          subscribe: () => {},
+          unsubscribe: () => {},
+        });
+      }
+      if (prop === "from") {
+        return () => ({
+          select: () => ({ data: null, error: { message: "Supabase não configurado - usando Turso" } }),
+          insert: () => ({ data: null, error: { message: "Supabase não configurado - usando Turso" } }),
+          update: () => ({ data: null, error: { message: "Supabase não configurado - usando Turso" } }),
+          delete: () => ({ data: null, error: { message: "Supabase não configurado - usando Turso" } }),
+          upsert: () => ({ data: null, error: { message: "Supabase não configurado - usando Turso" } }),
+        });
+      }
+      return undefined;
+    },
+  };
+  return new Proxy({}, handler) as ReturnType<typeof createClient>;
 }
-
-logDebug("Criando cliente Supabase com URL válida");
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-logDebug("Cliente Supabase inicializado com sucesso");

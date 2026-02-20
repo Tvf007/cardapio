@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSiteConfig, saveSiteConfig } from "@/lib/turso";
 import { requireAdmin } from "@/lib/authGuard";
 
 /**
  * GET /api/site-config?key=horarios
- * Busca configuração do site armazenada como item especial no Supabase
+ * Busca configuração do site armazenada como item especial no Turso
  * As configs ficam na tabela menu_items com id "__site_config_{key}__"
  * e category "__hidden__"
  */
@@ -20,21 +20,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const configId = `__site_config_${key}__`;
+    const rawValue = await getSiteConfig(key);
 
-    const { data, error } = await supabase
-      .from("menu_items")
-      .select("description")
-      .eq("id", configId)
-      .single();
-
-    if (error || !data) {
-      // Retornar valor vazio se não existe (não é erro)
+    if (!rawValue) {
       return NextResponse.json({ key, value: null });
     }
 
     try {
-      const value = JSON.parse(data.description || "null");
+      const value = JSON.parse(rawValue);
       return NextResponse.json({ key, value });
     } catch {
       return NextResponse.json({ key, value: null });
@@ -76,28 +69,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const configId = `__site_config_${key}__`;
     const serializedValue = JSON.stringify(value);
-
-    // Upsert: criar ou atualizar
-    const { error } = await supabase.from("menu_items").upsert(
-      {
-        id: configId,
-        name: `Config: ${key}`,
-        description: serializedValue,
-        price: 0,
-        category: "__hidden__",
-        available: false,
-        image: "",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
-
-    if (error) {
-      console.error("[SiteConfig POST] Supabase error:", error);
-      throw error;
-    }
+    await saveSiteConfig(key, serializedValue);
 
     return NextResponse.json({
       success: true,

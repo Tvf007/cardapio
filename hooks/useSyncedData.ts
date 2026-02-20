@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { MenuItem, Category } from "@/lib/validation";
 import { syncFromSupabase, localCache } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 
 interface BroadcastMessage {
   type: "sync" | "update";
@@ -25,9 +24,9 @@ export interface SyncedDataState {
   realtimeConnected: boolean;
 }
 
-// PERFORMANCE FIX: Polling a cada 30s (Realtime cuida da sync rápida)
+// Polling a cada 30s (sem Supabase Realtime, polling é o método principal)
 const POLL_INTERVAL = 30000;
-const DEBOUNCE_DELAY = 200; // Reduzido de 800ms para 200ms para melhor responsividade em reorders
+const DEBOUNCE_DELAY = 200;
 
 // IDs de sistema que não devem aparecer no cardápio público
 const HIDDEN_CATEGORY_ID = "__hidden__";
@@ -160,7 +159,7 @@ export function useSyncedData(): SyncedDataState & {
     isRefreshingRef.current = true;
 
     try {
-      // Invalidar cache para garantir dados frescos do Supabase
+      // Invalidar cache para garantir dados frescos do Turso
       localCache.invalidate("sync_data");
 
       const data = await syncFromSupabase(undefined, { forceRefresh: true });
@@ -189,7 +188,7 @@ export function useSyncedData(): SyncedDataState & {
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       const products = visibleProducts;
 
-      // Fallback localStorage apenas se Supabase não retornou logo
+      // Fallback localStorage apenas se servidor não retornou logo
       let finalLogo: string | null = logo;
       if (!finalLogo) {
         try {
@@ -202,7 +201,7 @@ export function useSyncedData(): SyncedDataState & {
           // localStorage unavailable
         }
       } else {
-        // Salvar logo do Supabase em localStorage para redundância
+        // Salvar logo em localStorage para redundância
         try {
           localStorage.setItem("padaria-logo", finalLogo);
         } catch {
@@ -217,7 +216,7 @@ export function useSyncedData(): SyncedDataState & {
         loading: false,
         error: null,
         lastSync: new Date(),
-        realtimeConnected: state.realtimeConnected,
+        realtimeConnected: false, // Sem Supabase Realtime
       });
 
       saveToLocalStorage(categories, products, finalLogo);
@@ -306,14 +305,14 @@ export function useSyncedData(): SyncedDataState & {
         console.info("[useSyncedData] Dados carregados do cache local");
       }
     } catch {
-      // Sem cache disponível, aguardar fetch do Supabase
+      // Sem cache disponível, aguardar fetch do servidor
     }
   }, [loadFromLocalStorage]);
 
   useEffect(() => {
     mountedRef.current = true;
 
-    // Carregar dados do Supabase (em background se já temos cache)
+    // Carregar dados do servidor (em background se já temos cache)
     refresh();
 
     // BroadcastChannel para sync entre abas DO MESMO DISPOSITIVO
@@ -334,53 +333,13 @@ export function useSyncedData(): SyncedDataState & {
       // BroadcastChannel not supported
     }
 
-    // DESABILITADO: Supabase Realtime causava race condition
-    // - Realtime dispara refresh enquanto POST /api/sync ainda está sendo processado
-    // - refresh() busca dados antes do POST ser confirmado pelo servidor
-    // - Resultado: UI reverte para dados antigos após 6-8 segundos
-    // SOLUÇÃO: Usar apenas polling (30s) como sincronização confiável
-    // FIX DATE: 2026-02-14
-    /*
-    const channel = supabase
-      .channel("cardapio-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "categories" },
-        () => {
-          debouncedRefresh();
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "menu_items" },
-        () => {
-          // Quando menu_items muda (incluindo logo!), refresh com debounce
-          debouncedRefresh();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          setState((prev) => ({ ...prev, realtimeConnected: true }));
-          console.info("[useSyncedData] Realtime conectado com sucesso");
-        }
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setState((prev) => ({ ...prev, realtimeConnected: false }));
-          console.warn("[useSyncedData] Realtime desconectado, dependendo do polling");
-        }
-      });
-    */
-
-    // FALLBACK: Criar channel dummy para compatibilidade, mas não subscribir
-    const channel = supabase.channel("cardapio-realtime-disabled");
-
-    // Polling a cada 30s como backup do Realtime
+    // Polling a cada 30s (método principal de sincronização sem Supabase Realtime)
     pollIntervalRef.current = setInterval(() => {
       refresh();
     }, POLL_INTERVAL);
 
     return () => {
       mountedRef.current = false;
-      channel.unsubscribe();
       broadcastChannelRef.current?.close();
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getCategoriesAndMenuItems, syncData as tursoSync } from "@/lib/turso";
 import { validateArray, MenuItemSchema, CategorySchema } from "@/lib/validation";
 import { requireAdmin } from "@/lib/authGuard";
 
@@ -108,189 +108,23 @@ function filterValidCategories(
   ) as Record<string, unknown>[];
 }
 
-/**
- * Função auxiliar para fazer upsert em batches com timeout
- * Evita travamento ao fazer upsert de muitos produtos com imagens grandes
- *
- * @param supabase - Cliente Supabase
- * @param table - Nome da tabela (categories ou menu_items)
- * @param items - Array de items a fazer upsert
- * @param batchSize - Tamanho de cada batch (default: 100)
- * @param timeoutMs - Timeout para cada batch em ms (default: 15000)
- */
-async function upsertWithBatches(
-  supabase: any,
-  table: string,
-  items: any[],
-  batchSize: number = 100,
-  timeoutMs: number = 15000
-): Promise<void> {
-  if (items.length === 0) {
-    return;
-  }
-
-  // Dividir em batches
-  const batches = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    batches.push(items.slice(i, i + batchSize));
-  }
-
-  console.log(
-    `[SYNC] Fazendo upsert de ${items.length} items em ${batches.length} batches de ${batchSize}`
-  );
-
-  let successCount = 0;
-
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex];
-
-    try {
-      // Criar promise de timeout
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Timeout de ${timeoutMs}ms no upsert de batch ${batchIndex + 1}/${batches.length} da tabela '${table}'`
-              )
-            ),
-          timeoutMs
-        )
-      );
-
-      // Executar upsert com race condition para timeout
-      const result = await Promise.race([
-        supabase
-          .from(table)
-          .upsert(batch, { onConflict: "id" }),
-        timeoutPromise,
-      ]);
-
-      // Verificar se houve erro
-      if (result && result.error) {
-        throw result.error;
-      }
-
-      successCount += batch.length;
-      console.log(
-        `[SYNC] ✅ Batch ${batchIndex + 1}/${batches.length} concluido (${batch.length} items, total ${successCount}/${items.length})`
-      );
-    } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : String(error);
-      console.error(
-        `[SYNC] ❌ Erro no batch ${batchIndex + 1}/${batches.length}:`,
-        errorMsg
-      );
-      throw error;
-    }
-  }
-
-  console.log(
-    `[SYNC] ✅ Upsert concluido: ${successCount} items salvos em ${batches.length} batches`
-  );
-}
+// Batch processing movido para lib/turso.ts - ver função syncData()
 
 export async function GET() {
   try {
-    // Buscar categorias e produtos em paralelo
-    console.log("[SYNC GET] Iniciando busca de dados do Supabase");
+    // Buscar categorias e produtos do Turso
+    console.log("[SYNC GET] Iniciando busca de dados do Turso");
 
-    // FALLBACK: Se Supabase não estiver disponível, retornar dados estáticos
-    // Este é um band-aid temporário enquanto variáveis de ambiente são configuradas
-    let categoriesResult: any;
-    let productsResult: any;
-
-    try {
-      [categoriesResult, productsResult] = await Promise.all([
-        supabase.from("categories").select("*"),
-        supabase.from("menu_items").select("*"),
-      ]);
-    } catch (supabaseError) {
-      console.warn("[SYNC GET] Fallback ativado - Supabase indisponível, usando dados estáticos", {
-        error: supabaseError instanceof Error ? supabaseError.message : String(supabaseError),
-      });
-
-      // Importar dados estáticos como fallback
-      const { categories: staticCategories, menuItems: staticProducts } = await import("@/data/menu");
-      categoriesResult = { data: staticCategories };
-      productsResult = { data: staticProducts };
-    }
-
-    // Verificar erros com mensagens detalhadas
-    if (categoriesResult.error) {
-      const errorMsg = categoriesResult.error.message || String(categoriesResult.error);
-      console.warn("[SYNC GET] Erro ao buscar categorias, verificando fallback:", {
-        message: errorMsg,
-        code: categoriesResult.error.code,
-      });
-
-      // Se for erro de quota ou API indisponível, usar fallback
-      if (
-        errorMsg.includes("exceed_egress_quota") ||
-        errorMsg.includes("quota") ||
-        errorMsg.includes("restricted")
-      ) {
-        console.log("[SYNC GET] 🔄 Fallback ativado - Supabase quota exceeded, usando dados estáticos");
-        const { categories: staticCategories, menuItems: staticProducts } = await import(
-          "@/data/menu"
-        );
-        return NextResponse.json({
-          categories: staticCategories,
-          products: staticProducts,
-        });
-      }
-
-      return NextResponse.json(
-        {
-          error: "Erro ao buscar categorias do Supabase",
-          details: errorMsg,
-          code: categoriesResult.error.code,
-        },
-        { status: 500 }
-      );
-    }
-
-    if (productsResult.error) {
-      const errorMsg = productsResult.error.message || String(productsResult.error);
-      console.warn("[SYNC GET] Erro ao buscar produtos, verificando fallback:", {
-        message: errorMsg,
-        code: productsResult.error.code,
-      });
-
-      // Se for erro de quota ou API indisponível, usar fallback
-      if (
-        errorMsg.includes("exceed_egress_quota") ||
-        errorMsg.includes("quota") ||
-        errorMsg.includes("restricted")
-      ) {
-        console.log("[SYNC GET] 🔄 Fallback ativado - Supabase quota exceeded, usando dados estáticos");
-        const { categories: staticCategories, menuItems: staticProducts } = await import(
-          "@/data/menu"
-        );
-        return NextResponse.json({
-          categories: staticCategories,
-          products: staticProducts,
-        });
-      }
-
-      return NextResponse.json(
-        {
-          error: "Erro ao buscar produtos do Supabase",
-          details: errorMsg,
-          code: productsResult.error.code,
-        },
-        { status: 500 }
-      );
-    }
+    const { categories: rawCategories, menuItems: rawProducts } =
+      await getCategoriesAndMenuItems();
 
     console.log("[SYNC GET] ✅ Dados buscados com sucesso", {
-      categoriesCount: (categoriesResult.data || []).length,
-      productsCount: (productsResult.data || []).length,
+      categoriesCount: rawCategories.length,
+      productsCount: rawProducts.length,
     });
 
-    const categories = categoriesResult.data || [];
-    const products = productsResult.data || [];
+    const categories = rawCategories || [];
+    const products = rawProducts || [];
 
     // Filtrar categorias invalidas e normalizar produtos
     const validCategories = filterValidCategories(categories);
@@ -334,16 +168,16 @@ export async function GET() {
 
     // Se for erro de variáveis de ambiente
     if (
-      errorMessage.includes("NEXT_PUBLIC_SUPABASE_URL") ||
-      errorMessage.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY") ||
+      errorMessage.includes("TURSO_CONNECTION_URL") ||
+      errorMessage.includes("TURSO_AUTH_TOKEN") ||
       errorMessage.includes("nao configurada")
     ) {
       return NextResponse.json(
         {
-          error: "Configuração do Supabase incompleta",
-          details: "Variáveis de ambiente não configuradas no Netlify",
+          error: "Configuração do Turso incompleta",
+          details: "Variáveis de ambiente TURSO_CONNECTION_URL e TURSO_AUTH_TOKEN não configuradas",
           helpText:
-            "Acesse https://app.netlify.com/projects/cardapio-freitas/settings/build-deploy e configure as variáveis de ambiente",
+            "Acesse o Netlify dashboard e configure TURSO_CONNECTION_URL e TURSO_AUTH_TOKEN",
         },
         { status: 500 }
       );
@@ -519,59 +353,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    // Executar operações de banco
-    const [existingCatResult, existingProdResult] = await Promise.all([
-      supabase.from("categories").select("id"),
-      supabase.from("menu_items").select("id"),
-    ]);
-
-    const existingCategoryIds = new Set(
-      (existingCatResult.data || []).map((c: Record<string, unknown>) =>
-        String(c.id)
-      )
-    );
-    const existingProductIds = new Set(
-      (existingProdResult.data || []).map((p: Record<string, unknown>) =>
-        String(p.id)
-      )
-    );
-
-    const newCategoryIds = new Set(
-      validatedCategories.map((c) => String((c as Record<string, unknown>).id))
-    );
-    const newProductIds = new Set(validatedProducts.map((p: unknown) => String((p as Record<string, unknown>).id)));
-
-    // CRITICAL FIX: Proteger categoria __hidden__ e logo __site_logo__ de deleção
-    // O frontend filtra esses itens de sistema, então eles nunca vêm no array de sync
-    // Sem esta proteção, eles seriam deletados a cada sync do admin
-    const categoriesToDelete = [
-      ...existingCategoryIds,
-    ].filter((id) => !newCategoryIds.has(id) && id !== "__hidden__");
-    const productsToDelete = [...existingProductIds].filter(
-      (id) => !newProductIds.has(id) && id !== "__site_logo__" && !id.startsWith("__site_config_")
-    );
-
-    // Fase de deletação
-    if (categoriesToDelete.length > 0) {
-      const { error } = await supabase
-        .from("categories")
-        .delete()
-        .in("id", categoriesToDelete);
-      if (error) throw error;
-    }
-
-    if (productsToDelete.length > 0) {
-      const { error } = await supabase
-        .from("menu_items")
-        .delete()
-        .in("id", productsToDelete);
-      if (error) throw error;
-    }
-
-    // Fase de upsert
     // CRITICAL FIX: Deduplicar por ID antes do upsert
-    // PostgreSQL rejeita ON CONFLICT DO UPDATE se o mesmo ID aparece 2x no mesmo comando
-    // Causa: estado do React pode conter duplicados em edge cases (cache + server merge)
+    // SQLite ON CONFLICT rejeita duplicatas no mesmo comando
     // Solução: Map com ID como chave - último valor ganha (mais recente)
     const deduplicatedCategories = validatedCategories.length > 0
       ? [...new Map((validatedCategories as Record<string, unknown>[]).map(c => [c.id, c])).values()]
@@ -587,41 +370,17 @@ export async function POST(request: NextRequest) {
       console.warn(`[SYNC] ⚠️ Produtos duplicados removidos: ${(validatedProducts as unknown[]).length} → ${deduplicatedProducts.length}`);
     }
 
-    if (deduplicatedCategories.length > 0) {
-      const { error } = await supabase
-        .from("categories")
-        .upsert(deduplicatedCategories, { onConflict: "id" });
-      if (error) throw error;
-    }
-
-    if (deduplicatedProducts.length > 0) {
-      try {
-        // Usar batch processing com timeout para evitar travamento
-        // Batch size: 100 produtos por vez
-        // Timeout: 15 segundos por batch
-        await upsertWithBatches(
-          supabase,
-          "menu_items",
-          deduplicatedProducts,
-          100,
-          15000
-        );
-      } catch (error) {
-        console.error(
-          "[SYNC] Erro ao fazer upsert de produtos (batch processing):",
-          error
-        );
-        throw error;
-      }
-    }
+    // Usar Turso para sincronizar dados (handles deletions + upserts com transaction)
+    console.log("[SYNC] Iniciando sincronização com Turso");
+    const syncResult = await tursoSync(deduplicatedCategories, deduplicatedProducts);
+    console.log("[SYNC] ✅ Sincronização Turso concluída:", syncResult);
 
     return NextResponse.json({
       success: true,
       message: "Dados sincronizados com sucesso!",
       categoriesCount: deduplicatedCategories.length,
       productsCount: deduplicatedProducts.length,
-      deletedCategories: categoriesToDelete.length,
-      deletedProducts: productsToDelete.length,
+      tursoSync: syncResult,
     });
   } catch (error) {
     const errorMessage =
