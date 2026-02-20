@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client";
 
 /**
  * Cliente Turso SQLite Cloud
@@ -8,28 +8,51 @@ import { createClient } from "@libsql/client";
  * - Unlimited egress (vs 10GB/mês limite)
  * - SQLite leve e rápido
  * - Zero custo para cardápio pequeno
+ *
+ * Usa lazy initialization para compatibilidade com Netlify
+ * (módulos podem ser carregados antes das env vars estarem prontas)
  */
 
-const databaseUrl = process.env.TURSO_CONNECTION_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+let _db: Client | null = null;
 
-if (!databaseUrl) {
-  throw new Error(
-    "TURSO_CONNECTION_URL não configurada. " +
-    "Defina a variável de ambiente com a URL de conexão do Turso."
-  );
+function getDb(): Client {
+  if (_db) return _db;
+
+  const databaseUrl = process.env.TURSO_CONNECTION_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (!databaseUrl) {
+    throw new Error(
+      "TURSO_CONNECTION_URL não configurada. " +
+      "Defina a variável de ambiente com a URL de conexão do Turso."
+    );
+  }
+
+  if (!authToken) {
+    throw new Error(
+      "TURSO_AUTH_TOKEN não configurada. " +
+      "Defina a variável de ambiente com o token de autenticação do Turso."
+    );
+  }
+
+  _db = createClient({
+    url: databaseUrl,
+    authToken: authToken,
+  });
+
+  return _db;
 }
 
-if (!authToken) {
-  throw new Error(
-    "TURSO_AUTH_TOKEN não configurada. " +
-    "Defina a variável de ambiente com o token de autenticação do Turso."
-  );
-}
-
-export const db = createClient({
-  url: databaseUrl,
-  authToken: authToken,
+// Getter para compatibilidade com código existente
+export const db = new Proxy({} as Client, {
+  get(_target, prop) {
+    const realDb = getDb();
+    const value = (realDb as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(realDb);
+    }
+    return value;
+  },
 });
 
 /**
