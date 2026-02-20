@@ -38,6 +38,9 @@ export default function ProdutoDetalhesPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Obter o ID (pode ser string ou array)
+        const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
         // Buscar menu
         const menuRes = await fetch("/api/menu");
         const menuData = await menuRes.json();
@@ -49,7 +52,7 @@ export default function ProdutoDetalhesPage() {
 
         // Encontrar o produto
         const foundProduct = menuData.find(
-          (item: MenuItem) => item.id === params.id
+          (item: MenuItem) => item.id === id
         );
 
         if (foundProduct) {
