@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// Build timestamp: 2026-02-20T20:30:00Z
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 
