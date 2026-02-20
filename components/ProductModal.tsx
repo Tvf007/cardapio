@@ -41,7 +41,7 @@ export function ProductModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6"
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
@@ -50,23 +50,18 @@ export function ProductModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn" />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl max-w-lg w-full max-h-[92vh] sm:max-h-[90vh] overflow-hidden animate-modalSlideUp">
+      {/* Modal - Tela inteira no mobile, modal normal no desktop */}
+      <div className="relative bg-white rounded-none sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl h-full sm:h-auto max-h-[100vh] sm:max-h-[95vh] overflow-hidden animate-modalSlideUp flex flex-col">
         {/* Barra colorida */}
         <div
           className="h-1 w-full"
           style={{ background: `linear-gradient(90deg, ${categoryColor}, ${categoryColor}aa)` }}
         />
 
-        {/* Handle bar (mobile) */}
-        <div className="sm:hidden flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
-        </div>
-
-        {/* Botão fechar */}
+        {/* Botão fechar - posicionado no topo */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors duration-200 shadow-lg"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 z-20 w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors duration-200 shadow-lg"
           aria-label="Fechar"
         >
           <svg
@@ -85,8 +80,8 @@ export function ProductModal({
           </svg>
         </button>
 
-        {/* Imagem */}
-        <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden">
+        {/* Imagem - maior no mobile */}
+        <div className="relative w-full h-64 sm:aspect-[4/3] sm:h-auto bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden">
           {item.image && item.image.trim() !== "" ? (
             <Image
               src={item.image}
@@ -111,8 +106,8 @@ export function ProductModal({
           )}
         </div>
 
-        {/* Conteúdo */}
-        <div className="p-5 sm:p-6 overflow-y-auto max-h-[40vh]">
+        {/* Conteúdo - flex para preencher espaço */}
+        <div className="flex-1 flex flex-col p-5 sm:p-6 overflow-y-auto">
           {/* Categoria */}
           <span
             className="inline-block px-3 py-1 rounded-full text-xs font-semibold border mb-3"
@@ -126,21 +121,21 @@ export function ProductModal({
           </span>
 
           {/* Nome */}
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
             {item.name}
           </h2>
 
           {/* Descrição completa */}
           {item.description && (
-            <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-4 whitespace-pre-line">
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed mb-5 whitespace-pre-line">
               {item.description}
             </p>
           )}
 
           {/* Preço */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 mb-4">
-            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Preço</span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#7c4e42] dark:text-amber-400">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 mb-6 mt-auto">
+            <span className="text-sm sm:text-base text-gray-500 dark:text-gray-400 font-medium">Preço</span>
+            <span className="text-3xl sm:text-4xl font-extrabold text-[#7c4e42] dark:text-amber-400">
               R${" "}
               {typeof item.price === "number"
                 ? item.price.toFixed(2)
@@ -148,7 +143,7 @@ export function ProductModal({
             </span>
           </div>
 
-          {/* Botão WhatsApp */}
+          {/* Botão WhatsApp - fixo no final */}
           <button
             onClick={() => {
               const price = typeof item.price === "number" ? item.price.toFixed(2) : "0.00";
@@ -156,9 +151,9 @@ export function ProductModal({
               const whatsappUrl = `https://wa.me/5527997835980?text=${encodeURIComponent(message)}`;
               window.open(whatsappUrl, "_blank");
             }}
-            className="w-full py-3 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-md"
+            className="w-full py-4 sm:py-3 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-md text-lg"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-9.746 9.769c0 2.589.875 5.022 2.472 6.923l-2.598 9.556 9.786-3.14c1.999 1.158 4.334 1.809 6.784 1.809h.007c5.396 0 9.767-4.413 9.767-9.859 0-2.637-.875-5.061-2.472-6.966 1.6-1.905 2.472-4.329 2.472-6.966C21.52 6.413 17.15 2 11.77 2Z" />
             </svg>
             <span>Pedir pelo WhatsApp</span>
