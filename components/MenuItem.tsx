@@ -1,9 +1,9 @@
 "use client";
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { MenuItem as MenuItemType, Category } from "@/lib/validation";
-import { ProductModal } from "./ProductModal";
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -38,7 +38,6 @@ export function getCategoryName(categoryId: string, categories?: Category[]): st
 
 // PERFORMANCE FIX: React.memo para evitar re-renders desnecessários
 export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemProps) {
-  const [showModal, setShowModal] = useState(false);
   const isNew = isNewProduct(item);
 
   const categoryName = useMemo(
@@ -51,30 +50,15 @@ export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemPro
     [categoryName]
   );
 
-  const handleOpenModal = useCallback(() => {
-    setShowModal(true);
-  }, []);
-
-  const handleCloseModal = useCallback(() => {
-    setShowModal(false);
-  }, []);
-
   const isUnavailable = !item.available;
 
   return (
-    <>
+    <Link href={`/produto/${item.id}`}>
       <div
-        className="menu-card menu-card-mobile group bg-white shadow-sm overflow-hidden border border-gray-100"
-        onClick={handleOpenModal}
+        className="menu-card menu-card-mobile group bg-white shadow-sm overflow-hidden border border-gray-100 cursor-pointer"
         role="button"
         tabIndex={0}
         aria-label={`Ver detalhes de ${item.name}`}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleOpenModal();
-          }
-        }}
         style={{ opacity: isUnavailable ? 0.6 : 1 }}
       >
         {/* Imagem */}
@@ -160,17 +144,6 @@ export const MenuItem = memo(function MenuItem({ item, categories }: MenuItemPro
           </div>
         </div>
       </div>
-
-      {/* Modal de detalhes */}
-      {showModal && (
-        <ProductModal
-          item={item}
-          categories={categories}
-          categoryName={categoryName}
-          categoryColor={categoryColor}
-          onClose={handleCloseModal}
-        />
-      )}
-    </>
+    </Link>
   );
 });
