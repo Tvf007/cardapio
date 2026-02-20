@@ -23,17 +23,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["react-icons"],
   },
 
-  // REDIRECTS: Redirecionar raiz para boas-vindas
-  async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/boas-vindas",
-        permanent: false,
-      },
-    ];
-  },
-
   // PERFORMANCE: Headers de cache para assets estáticos
   async headers() {
     return [

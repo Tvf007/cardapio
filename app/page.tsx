@@ -1,5 +1,6 @@
-import BoasVindasPage from "./boas-vindas/page";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return <BoasVindasPage />;
+export default async function Home() {
+  // Redireciona para boas-vindas de forma síncrona no servidor
+  redirect("/boas-vindas");
 }
