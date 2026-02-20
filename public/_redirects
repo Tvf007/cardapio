@@ -1,0 +1,5 @@
+# Redireciona / para /boas-vindas
+/  /boas-vindas  200
+
+# Regra de fallback para SPA
+/*  /404.html   404
