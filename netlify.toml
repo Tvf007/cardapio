@@ -5,6 +5,4 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Force redeploy - timestamp
-# 2026-02-19 20:29
-Timestamp: 1771544836
+# Turso SQLite Cloud - migrado em 2026-02-20
