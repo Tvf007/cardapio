@@ -1,5 +1,6 @@
-import { HomeContent } from "./HomeContent";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <HomeContent />;
+  // Redireciona para a página de boas-vindas
+  redirect("/boas-vindas");
 }
