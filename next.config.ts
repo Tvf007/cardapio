@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// Build timestamp: 2026-02-20T20:30:00Z
+// Build timestamp: 2026-02-20T23:30:00Z - Auto-deploy via GitHub linked
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 
