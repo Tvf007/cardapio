@@ -43,6 +43,9 @@ function getDb(): Client {
   _db = createClient({
     url: databaseUrl,
     authToken: authToken,
+    // FIX: Usar fetch nativo ao invés de cross-fetch (que depende de https.request)
+    // Cloudflare Workers tem fetch nativo, não precisa de polyfill
+    fetch: globalThis.fetch,
   });
 
   return _db;

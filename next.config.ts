@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
-// Build timestamp: 2026-02-20T23:30:00Z - Auto-deploy via GitHub linked
+// Build timestamp: 2026-02-21 - Migrado para Cloudflare Pages
 const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
+
+  // FIX: Cloudflare Workers - @libsql/client precisa estar no bundle
+  // Next.js trata @libsql/client como external por padrão, mas Cloudflare Workers
+  // não tem node_modules em runtime. Manter apenas @libsql/isomorphic-ws como
+  // external para que o OpenNext copie o pacote completo (incluindo web.mjs)
+  serverExternalPackages: ["@libsql/isomorphic-ws"],
 
   // PERFORMANCE: Otimização de imagens com Next.js Image
   images: {
@@ -62,3 +68,7 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Inicialização do Cloudflare para desenvolvimento local
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();
