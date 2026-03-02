@@ -23,6 +23,7 @@ interface CardapioContextType {
   deleteCategory: (id: string) => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
   reorderCategories: (reorderedCategories: Category[]) => Promise<void>;
+  reorderProducts: (reorderedProducts: MenuItem[]) => Promise<void>;
   syncToCloud: () => Promise<void>;
 }
 
@@ -207,6 +208,28 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
     [syncedData]
   );
 
+  const reorderProducts = useCallback(
+    async (reorderedProducts: MenuItem[]) => {
+      const previousProducts = syncedData.products;
+      syncedData.setOptimisticData({ products: reorderedProducts });
+
+      try {
+        const validCats = getValidCategories(syncedData.categories);
+        // DEBOUNCE: Usar debounce para evitar múltiplas sincronizações
+        // Delay de 500ms é suficiente para capturar movimentações rápidas
+        await syncToSupabaseDebounced(reorderedProducts, validCats, 500);
+
+        // Não fazer refresh automático - deixar a sincronização natural
+        // O frontend manterá a UI atualizada otimisticamente
+        // Supabase realtime e poll periódico vão sincronizar quando necessário
+      } catch (error) {
+        syncedData.setOptimisticData({ products: previousProducts });
+        throw error;
+      }
+    },
+    [syncedData]
+  );
+
   const syncToCloud = useCallback(async () => {
     try {
       const validCats = getValidCategories(syncedData.categories);
@@ -234,6 +257,7 @@ export function CardapioProvider({ children }: { children: ReactNode }) {
         deleteCategory,
         addCategory,
         reorderCategories,
+        reorderProducts,
         syncToCloud,
       }}
     >

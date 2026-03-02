@@ -7,6 +7,12 @@ import { useToast } from "@/components/Toast";
 import { MenuItem } from "@/lib/validation";
 import { uploadImage } from "@/lib/upload";
 
+interface Adicional {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export default function EditarProdutoPage() {
   const router = useRouter();
   const params = useParams();
@@ -26,6 +32,12 @@ export default function EditarProdutoPage() {
   const [uploading, setUploading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Adicionais
+  const [allAdicionais, setAllAdicionais] = useState<Adicional[]>([]);
+  const [selectedAdicionais, setSelectedAdicionais] = useState<string[]>([]);
+  const [adicionaisLoaded, setAdicionaisLoaded] = useState(false);
+
+  // Carrega dados do produto nos campos
   useEffect(() => {
     if (existingProduct && !loaded) {
       setName(existingProduct.name);
@@ -37,6 +49,41 @@ export default function EditarProdutoPage() {
       setLoaded(true);
     }
   }, [existingProduct, loaded]);
+
+  // Carrega lista de adicionais e os já selecionados para este produto
+  useEffect(() => {
+    if (!productId || adicionaisLoaded) return;
+
+    const loadAdicionais = async () => {
+      try {
+        const [allRes, selectedRes] = await Promise.all([
+          fetch("/api/adicionais"),
+          fetch("/api/adicionais", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ action: "get-product-ids", product_id: productId }),
+          }),
+        ]);
+        const allData = await allRes.json();
+        const selectedData = await selectedRes.json();
+        setAllAdicionais(allData.adicionais || []);
+        setSelectedAdicionais(selectedData.adicional_ids || []);
+      } catch {
+        /* silencioso */
+      } finally {
+        setAdicionaisLoaded(true);
+      }
+    };
+
+    loadAdicionais();
+  }, [productId, adicionaisLoaded]);
+
+  const toggleAdicional = (id: string) => {
+    setSelectedAdicionais((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   const handleImageChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +99,8 @@ export default function EditarProdutoPage() {
     } finally {
       setUploading(false);
     }
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +125,19 @@ export default function EditarProdutoPage() {
         image,
       };
       await cardapio.updateProduct(product);
+
+      // Salvar adicionais vinculados (sempre chama, mesmo com lista vazia, para desvinculá-los)
+      await fetch("/api/adicionais", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          action: "set-product",
+          product_id: productId,
+          adicional_ids: selectedAdicionais,
+        }),
+      });
+
       toast.success("Produto atualizado!");
       router.push("/admin/produtos");
     } catch (error) {
@@ -86,12 +147,19 @@ export default function EditarProdutoPage() {
     }
   };
 
+  const inputClass =
+    "w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#7c4e42] bg-white text-gray-900 text-base font-medium transition-colors";
+  const labelClass = "block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest";
+
   if (!existingProduct && cardapio.products.length > 0) {
     return (
       <div className="text-center py-16">
         <span className="text-5xl block mb-3">❓</span>
         <p className="text-gray-500 font-medium text-sm">Produto não encontrado</p>
-        <button onClick={() => router.push("/admin/produtos")} className="mt-4 text-[#7c4e42] font-semibold text-sm hover:underline">
+        <button
+          onClick={() => router.push("/admin/produtos")}
+          className="mt-4 text-[#7c4e42] font-semibold text-sm hover:underline"
+        >
           Voltar para produtos
         </button>
       </div>
@@ -99,32 +167,40 @@ export default function EditarProdutoPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg mx-auto space-y-5">
-      {/* Foto */}
-      <div className="flex flex-col items-center">
-        <label className="cursor-pointer w-full">
-          <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 overflow-hidden hover:border-[#d4a574] transition-all">
+    <form onSubmit={handleSubmit} className="w-full space-y-5 pb-10">
+
+      {/* ── FOTO ── */}
+      <div>
+        <label className={labelClass}>Foto do Produto</label>
+        <label className="cursor-pointer block w-full">
+          <div className={`w-full rounded-3xl border-2 border-dashed overflow-hidden transition-all ${
+            image ? "border-[#7c4e42]" : "border-gray-300 hover:border-[#7c4e42]"
+          }`}>
             {image ? (
               <div className="relative">
-                <img src={image} alt="Preview" className="w-full h-48 object-cover" />
+                <img src={image} alt="Preview" className="w-full h-56 object-cover" />
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); setImage(""); }}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center text-sm hover:bg-black/70 transition-all"
+                  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-lg hover:bg-black/80 transition-all shadow-lg"
                 >
                   ✕
                 </button>
+                <div className="absolute bottom-3 left-3 bg-black/50 text-white text-xs px-3 py-1 rounded-full font-medium">
+                  Toque para trocar
+                </div>
               </div>
             ) : uploading ? (
-              <div className="py-12 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7c4e42] mx-auto mb-3"></div>
-                <p className="text-sm font-medium text-gray-500">Comprimindo imagem...</p>
+              <div className="py-16 text-center bg-amber-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#7c4e42] border-t-transparent mx-auto mb-4"></div>
+                <p className="text-base font-semibold text-gray-600">Enviando imagem...</p>
+                <p className="text-sm text-gray-400 mt-1">Aguarde um momento</p>
               </div>
             ) : (
-              <div className="py-12 text-center">
-                <span className="text-4xl block mb-2">📸</span>
-                <p className="text-sm font-medium text-gray-500">Toque para adicionar foto</p>
-                <p className="text-xs text-gray-400 mt-1">Opcional • até 10MB • compressão automática</p>
+              <div className="py-14 text-center bg-gray-50 hover:bg-amber-50/40 transition-colors">
+                <span className="text-6xl block mb-3">📸</span>
+                <p className="text-base font-semibold text-gray-700">Toque para adicionar foto</p>
+                <p className="text-sm text-gray-400 mt-1">Opcional · até 10MB · compressão automática</p>
               </div>
             )}
           </div>
@@ -132,61 +208,158 @@ export default function EditarProdutoPage() {
         </label>
       </div>
 
-      {/* Nome */}
+      {/* ── NOME ── */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Nome</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Pão Francês"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm" />
+        <label className={labelClass}>Nome do Produto *</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ex: Pão Francês"
+          className={inputClass}
+          required
+        />
       </div>
 
-      {/* Preço */}
+      {/* ── PREÇO ── */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Preço (R$)</label>
-        <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0,00"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm" />
+        <label className={labelClass}>Preço (R$)</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="Ex: 5.90"
+          className={inputClass}
+        />
       </div>
 
-      {/* Categoria */}
+      {/* ── CATEGORIA ── */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Categoria</label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm">
+        <label className={labelClass}>Categoria *</label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className={inputClass}
+        >
           {cardapio.categories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
       </div>
 
-      {/* Descrição */}
+      {/* ── DESCRIÇÃO ── */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Descrição</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional..." rows={3}
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 text-sm resize-none" />
+        <label className={labelClass}>
+          Descrição <span className="normal-case text-gray-400 font-normal tracking-normal">(opcional)</span>
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Descreva o produto..."
+          rows={3}
+          className={`${inputClass} resize-none`}
+        />
       </div>
 
-      {/* Disponibilidade */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
-        <span className="text-sm font-medium text-gray-700">Disponível no cardápio</span>
-        <button type="button" onClick={() => setAvailable(!available)}
-          className={`w-12 h-7 rounded-full transition-all relative ${available ? "bg-green-500" : "bg-gray-300"}`}>
-          <span className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all"
-            style={{ left: available ? "22px" : "2px" }} />
-        </button>
-      </div>
+      {/* ── ADICIONAIS ── */}
+      {allAdicionais.length > 0 && (
+        <div>
+          <label className={labelClass}>
+            Adicionais disponíveis{" "}
+            <span className="normal-case text-gray-400 font-normal tracking-normal">(opcional)</span>
+          </label>
+          <div className="space-y-2">
+            {allAdicionais.map((ad) => {
+              const selected = selectedAdicionais.includes(ad.id);
+              return (
+                <button
+                  key={ad.id}
+                  type="button"
+                  onClick={() => toggleAdicional(ad.id)}
+                  className={`w-full flex items-center justify-between px-5 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                    selected
+                      ? "bg-green-50 border-green-400"
+                      : "bg-gray-50 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0 transition-all ${
+                        selected ? "bg-green-500 text-white" : "bg-gray-200 text-gray-400"
+                      }`}
+                    >
+                      {selected ? "✓" : "+"}
+                    </span>
+                    <span className="font-semibold text-gray-800 text-base">{ad.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-[#7c4e42]">+ R$ {ad.price.toFixed(2)}</span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedAdicionais.length > 0 && (
+            <p className="text-xs text-green-600 font-semibold mt-2 ml-1">
+              ✓ {selectedAdicionais.length}{" "}
+              {selectedAdicionais.length === 1 ? "adicional selecionado" : "adicionais selecionados"}
+            </p>
+          )}
+        </div>
+      )}
 
-      {/* Botões */}
-      <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={saving || uploading}
-          className="flex-1 bg-[#7c4e42] text-white py-3.5 rounded-xl font-semibold text-sm hover:bg-[#5a3a2f] transition-all disabled:opacity-50 shadow-lg">
+      {/* ── DISPONIBILIDADE ── */}
+      <button
+        type="button"
+        onClick={() => setAvailable(!available)}
+        className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all ${
+          available ? "bg-green-50 border-green-400" : "bg-gray-100 border-gray-300"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{available ? "✅" : "⏸️"}</span>
+          <div className="text-left">
+            <p className="text-base font-bold text-gray-800">Disponível no cardápio</p>
+            <p className="text-sm text-gray-500">
+              {available ? "Aparece para os clientes" : "Oculto para os clientes"}
+            </p>
+          </div>
+        </div>
+        <div
+          className={`w-14 h-8 rounded-full transition-all relative flex-shrink-0 ${
+            available ? "bg-green-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className="absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all"
+            style={{ left: available ? "30px" : "4px" }}
+          />
+        </div>
+      </button>
+
+      {/* ── BOTÕES ── */}
+      <div className="flex flex-col gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving || uploading}
+          className="w-full bg-[#7c4e42] text-white py-5 rounded-2xl font-bold text-lg hover:bg-[#5a3a2f] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-[#7c4e42]/30"
+        >
           {saving ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+            <span className="flex items-center justify-center gap-3">
+              <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
               Salvando...
             </span>
-          ) : "Atualizar Produto"}
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              <span>✓</span> Atualizar Produto
+            </span>
+          )}
         </button>
-        <button type="button" onClick={() => router.push("/admin/produtos")}
-          className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all">
+        <button
+          type="button"
+          onClick={() => router.push("/admin/produtos")}
+          className="w-full bg-gray-100 text-gray-600 py-4 rounded-2xl font-semibold text-base hover:bg-gray-200 active:scale-[0.98] transition-all"
+        >
           Cancelar
         </button>
       </div>

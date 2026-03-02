@@ -46,6 +46,14 @@ export function HomeContent() {
   const hasAutoSelected = useRef(false);
   const cardapio = useCardapio();
 
+  // Apply FREITAS red color to footer
+  useEffect(() => {
+    const footer = document.querySelector('footer');
+    if (footer) {
+      footer.style.background = 'linear-gradient(135deg, #C1272D, #9A1F23)';
+    }
+  }, []);
+
   // Carregar horários do servidor
   useEffect(() => {
     const loadHorarios = async () => {
@@ -147,7 +155,8 @@ export function HomeContent() {
             fill
             className="header-cover-image object-cover"
             aria-hidden="true"
-            quality={30}
+            priority
+            unoptimized
           />
         )}
 
@@ -265,7 +274,7 @@ export function HomeContent() {
       </main>
 
       {/* ===== FOOTER ===== */}
-      <footer className="footer-gradient text-white mt-12 sm:mt-16">
+      <footer className="text-white mt-12 sm:mt-16" style={{ background: 'linear-gradient(135deg, #C1272D, #9A1F23)' }}>
         <div className="max-w-5xl mx-auto px-4 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>

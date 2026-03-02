@@ -42,10 +42,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [isRootAdmin, router]);
 
   const getPageTitle = () => {
+    if (pathname === "/admin/boas-vindas") return "Boas-vindas";
     if (pathname === "/admin/categorias") return "Categorias";
     if (pathname === "/admin/produtos") return "Produtos";
     if (pathname === "/admin/produtos/novo") return "Cadastro de Produto";
     if (pathname?.startsWith("/admin/produtos/editar")) return "Editar Produto";
+    if (pathname === "/admin/adicionais") return "Adicionais";
     if (pathname === "/admin/horarios") return "Horários";
     if (pathname === "/admin/imagens") return "Imagens";
     return "";

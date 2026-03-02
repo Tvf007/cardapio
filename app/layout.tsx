@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Updated: Footer color changed to FREITAS red (#C1272D)
 export const metadata: Metadata = {
   title: "Cardapio - Padaria Freitas",
   description: "Cardapio digital da Padaria e Confeitaria Freitas",

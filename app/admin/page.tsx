@@ -87,12 +87,14 @@ export default function AdminPage() {
   const cardapioUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const menuItems = [
+    { id: "boas-vindas", icon: "🎉", label: "Boas-vindas", action: () => router.push("/admin/boas-vindas") },
     { id: "categorias", icon: "📁", label: "Categorias", action: () => router.push("/admin/categorias") },
     { id: "produtos", icon: "🍽️", label: "Produtos", action: () => router.push("/admin/produtos") },
+    { id: "adicionais", icon: "➕", label: "Adicionais", action: () => router.push("/admin/adicionais") },
     { id: "horarios", icon: "🕐", label: "Horários", action: () => router.push("/admin/horarios") },
     { id: "imagens", icon: "🖼️", label: "Imagens", action: () => router.push("/admin/imagens") },
     { id: "qrcode", icon: "📱", label: "QR Code", action: () => setShowQRCodeModal(true) },
-  ];
+  ]; // 7 itens + Sincronização
 
   return (
     <div className="min-h-screen warm-pattern-bg">

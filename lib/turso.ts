@@ -119,97 +119,92 @@ export async function getCategoriesAndMenuItems() {
 
 /**
  * Sincronizar dados (upsert categories e menu_items)
- * Usa transactions para garantir consistência
+ * Usa db.batch() para execução atômica em um único request HTTP
+ *
+ * IMPORTANTE: O cliente HTTP (@libsql/client/web) abre um novo stream
+ * por cada execute(), então BEGIN/COMMIT/ROLLBACK manuais NÃO funcionam.
+ * db.batch(statements, "write") envia tudo em um único request HTTP
+ * e faz BEGIN/COMMIT/ROLLBACK internamente.
  */
 export async function syncData(
   categories: any[],
   menuItems: any[]
 ) {
   try {
-    // Começar transaction
-    await db.execute("BEGIN TRANSACTION");
+    // Montar todos os statements para execução atômica
+    const statements: Array<{ sql: string; args: any[] }> = [];
 
-    try {
-      // Deletar categorias não incluídas
-      const categoryIds = categories.map((c) => c.id);
-      if (categoryIds.length > 0) {
-        const placeholders = categoryIds.map(() => "?").join(",");
-        await db.execute(
-          `DELETE FROM categories WHERE id NOT IN (${placeholders})`,
-          categoryIds as any
-        );
-      }
-
-      // Deletar menu items não incluídos
-      const menuItemIds = menuItems.map((m) => m.id);
-      if (menuItemIds.length > 0) {
-        const placeholders = menuItemIds.map(() => "?").join(",");
-        await db.execute(
-          `DELETE FROM menu_items WHERE id NOT IN (${placeholders})`,
-          menuItemIds as any
-        );
-      }
-
-      // Upsert categories
-      for (const category of categories) {
-        await db.execute(
-          `INSERT INTO categories (id, name, "order")
-           VALUES (?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET
-           name = excluded.name,
-           "order" = excluded."order"`,
-          [category.id, category.name, category.order ?? 999] as any
-        );
-      }
-
-      // Upsert menu items (em batches para evitar travamento)
-      const batchSize = 50;
-      for (let i = 0; i < menuItems.length; i += batchSize) {
-        const batch = menuItems.slice(i, i + batchSize);
-        for (const item of batch) {
-          await db.execute(
-            `INSERT INTO menu_items (id, name, description, price, category, image, available, "order")
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET
-             name = excluded.name,
-             description = excluded.description,
-             price = excluded.price,
-             category = excluded.category,
-             image = excluded.image,
-             available = excluded.available,
-             "order" = excluded."order"`,
-            [
-              item.id,
-              item.name,
-              item.description,
-              item.price,
-              item.category,
-              item.image,
-              item.available ? 1 : 0,
-              item.order ?? 999,
-            ] as any
-          );
-        }
-      }
-
-      // Commit transaction
-      await db.execute("COMMIT");
-
-      console.log("[TURSO] Sync completed successfully", {
-        categoriesCount: categories.length,
-        menuItemsCount: menuItems.length,
+    // Deletar categorias não incluídas (preservar categorias de sistema como __hidden__)
+    const categoryIds = categories.map((c) => c.id);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => "?").join(",");
+      statements.push({
+        sql: `DELETE FROM categories WHERE id NOT IN (${placeholders}) AND substr(id, 1, 2) != '__'`,
+        args: categoryIds,
       });
-
-      return {
-        success: true,
-        categoriesCount: categories.length,
-        menuItemsCount: menuItems.length,
-      };
-    } catch (transactionError) {
-      // Rollback em caso de erro
-      await db.execute("ROLLBACK");
-      throw transactionError;
     }
+
+    // Deletar menu items não incluídos (preservar itens de sistema: __site_logo__, __site_config_*)
+    const menuItemIds = menuItems.map((m) => m.id);
+    if (menuItemIds.length > 0) {
+      const placeholders = menuItemIds.map(() => "?").join(",");
+      statements.push({
+        sql: `DELETE FROM menu_items WHERE id NOT IN (${placeholders}) AND substr(id, 1, 2) != '__'`,
+        args: menuItemIds,
+      });
+    }
+
+    // Upsert categories
+    for (const category of categories) {
+      statements.push({
+        sql: `INSERT INTO categories (id, name, "order")
+         VALUES (?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         "order" = excluded."order"`,
+        args: [category.id, category.name, category.order ?? 999],
+      });
+    }
+
+    // Upsert menu items
+    for (const item of menuItems) {
+      statements.push({
+        sql: `INSERT INTO menu_items (id, name, description, price, category, image, available, "order")
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         description = excluded.description,
+         price = excluded.price,
+         category = excluded.category,
+         image = excluded.image,
+         available = excluded.available,
+         "order" = excluded."order"`,
+        args: [
+          item.id,
+          item.name,
+          item.description,
+          item.price,
+          item.category,
+          item.image,
+          item.available ? 1 : 0,
+          item.order ?? 999,
+        ],
+      });
+    }
+
+    // Executar tudo atomicamente em um único request HTTP
+    await db.batch(statements, "write");
+
+    console.log("[TURSO] Sync completed successfully", {
+      categoriesCount: categories.length,
+      menuItemsCount: menuItems.length,
+    });
+
+    return {
+      success: true,
+      categoriesCount: categories.length,
+      menuItemsCount: menuItems.length,
+    };
   } catch (error) {
     console.error("Erro ao sincronizar dados:", error);
     throw error;
@@ -329,6 +324,130 @@ export async function cleanupInvalidCategories(): Promise<{
   };
 }
 
+// ========== Funções para /api/adicionais ==========
+
+/**
+ * Inicializar tabelas de adicionais (auto-migrate)
+ */
+export async function initAdicionaisTables(): Promise<void> {
+  try {
+    await db.batch([
+      {
+        sql: `CREATE TABLE IF NOT EXISTS adicionais (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          price REAL NOT NULL DEFAULT 0
+        )`,
+        args: [],
+      },
+      {
+        sql: `CREATE TABLE IF NOT EXISTS product_adicionais (
+          product_id TEXT NOT NULL,
+          adicional_id TEXT NOT NULL,
+          PRIMARY KEY (product_id, adicional_id)
+        )`,
+        args: [],
+      },
+    ], "write");
+  } catch (error) {
+    console.error("[TURSO] Erro ao inicializar tabelas de adicionais:", error);
+    throw error;
+  }
+}
+
+/**
+ * Buscar todos os adicionais
+ */
+export async function getAdicionais(): Promise<Array<{ id: string; name: string; price: number }>> {
+  await initAdicionaisTables();
+  const result = await db.execute(
+    "SELECT id, name, price FROM adicionais ORDER BY name ASC"
+  );
+  return result.rows.map(r => ({
+    id: r.id as string,
+    name: r.name as string,
+    price: r.price as number,
+  }));
+}
+
+/**
+ * Buscar adicionais de um produto específico
+ */
+export async function getAdicionaisForProduct(productId: string): Promise<Array<{ id: string; name: string; price: number }>> {
+  await initAdicionaisTables();
+  const result = await db.execute(
+    `SELECT a.id, a.name, a.price
+     FROM adicionais a
+     INNER JOIN product_adicionais pa ON a.id = pa.adicional_id
+     WHERE pa.product_id = ?
+     ORDER BY a.name ASC`,
+    [productId]
+  );
+  return result.rows.map(r => ({
+    id: r.id as string,
+    name: r.name as string,
+    price: r.price as number,
+  }));
+}
+
+/**
+ * Buscar IDs dos adicionais associados a um produto
+ */
+export async function getProductAdicionaisIds(productId: string): Promise<string[]> {
+  await initAdicionaisTables();
+  const result = await db.execute(
+    "SELECT adicional_id FROM product_adicionais WHERE product_id = ?",
+    [productId]
+  );
+  return result.rows.map(r => r.adicional_id as string);
+}
+
+/**
+ * Criar novo adicional
+ */
+export async function createAdicional(id: string, name: string, price: number): Promise<void> {
+  await initAdicionaisTables();
+  await db.execute(
+    "INSERT INTO adicionais (id, name, price) VALUES (?, ?, ?)",
+    [id, name, price]
+  );
+}
+
+/**
+ * Atualizar adicional existente
+ */
+export async function updateAdicional(id: string, name: string, price: number): Promise<void> {
+  await db.execute(
+    "UPDATE adicionais SET name = ?, price = ? WHERE id = ?",
+    [name, price, id]
+  );
+}
+
+/**
+ * Deletar adicional (e seus vínculos com produtos)
+ */
+export async function deleteAdicional(id: string): Promise<void> {
+  await db.batch([
+    { sql: "DELETE FROM product_adicionais WHERE adicional_id = ?", args: [id] },
+    { sql: "DELETE FROM adicionais WHERE id = ?", args: [id] },
+  ], "write");
+}
+
+/**
+ * Definir adicionais de um produto (substitui todos os existentes)
+ */
+export async function setProductAdicionais(productId: string, adicionalIds: string[]): Promise<void> {
+  await initAdicionaisTables();
+  const statements: Array<{ sql: string; args: any[] }> = [
+    { sql: "DELETE FROM product_adicionais WHERE product_id = ?", args: [productId] },
+    ...adicionalIds.map(aid => ({
+      sql: "INSERT OR IGNORE INTO product_adicionais (product_id, adicional_id) VALUES (?, ?)",
+      args: [productId, aid],
+    })),
+  ];
+  await db.batch(statements, "write");
+}
+
 // ========== Funções para /api/diagnostic ==========
 
 /**
@@ -353,30 +472,28 @@ export async function hasData(): Promise<boolean> {
 
 /**
  * Inserir dados iniciais (categories + menu_items)
+ * Usa db.batch() para execução atômica (mesmo motivo do syncData)
  */
 export async function initializeData(
   categories: Array<{ id: string; name: string; order?: number }>,
   menuItems: Array<{ id: string; name: string; description?: string; price: number; category: string; image?: string; available: boolean; order?: number }>
 ): Promise<{ categoriesCount: number; menuItemsCount: number }> {
-  await db.execute("BEGIN TRANSACTION");
-  try {
-    for (const cat of categories) {
-      await db.execute(
-        `INSERT OR IGNORE INTO categories (id, name, "order") VALUES (?, ?, ?)`,
-        [cat.id, cat.name, cat.order ?? 999]
-      );
-    }
-    for (const item of menuItems) {
-      await db.execute(
-        `INSERT OR IGNORE INTO menu_items (id, name, description, price, category, image, available, "order")
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item.id, item.name, item.description || "", item.price, item.category, item.image || "", item.available ? 1 : 0, item.order ?? 999]
-      );
-    }
-    await db.execute("COMMIT");
-    return { categoriesCount: categories.length, menuItemsCount: menuItems.length };
-  } catch (error) {
-    await db.execute("ROLLBACK");
-    throw error;
+  const statements: Array<{ sql: string; args: any[] }> = [];
+
+  for (const cat of categories) {
+    statements.push({
+      sql: `INSERT OR IGNORE INTO categories (id, name, "order") VALUES (?, ?, ?)`,
+      args: [cat.id, cat.name, cat.order ?? 999],
+    });
   }
+  for (const item of menuItems) {
+    statements.push({
+      sql: `INSERT OR IGNORE INTO menu_items (id, name, description, price, category, image, available, "order")
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [item.id, item.name, item.description || "", item.price, item.category, item.image || "", item.available ? 1 : 0, item.order ?? 999],
+    });
+  }
+
+  await db.batch(statements, "write");
+  return { categoriesCount: categories.length, menuItemsCount: menuItems.length };
 }

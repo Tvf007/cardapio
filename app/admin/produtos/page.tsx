@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
+import { MenuItem } from "@/types";
 
 // Emojis por categoria
 function getCategoryEmoji(name: string): string {
@@ -21,6 +22,11 @@ function getCategoryEmoji(name: string): string {
 
 export default function ProdutosPage() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [draggedProduct, setDraggedProduct] = useState<MenuItem | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const dragDataRef = useRef<{ product: MenuItem; categoryId: string } | null>(null);
+
   const router = useRouter();
   const cardapio = useCardapio();
   const toast = useToast();
@@ -41,6 +47,110 @@ export default function ProdutosPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao deletar");
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, product: MenuItem, categoryId: string) => {
+    setDraggedProduct(product);
+    dragDataRef.current = { product, categoryId };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", product.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedProduct(null);
+    setDragOverCategory(null);
+    setDragOverIndex(null);
+    dragDataRef.current = null;
+  };
+
+  const handleDragOver = (e: React.DragEvent, categoryId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverCategory(categoryId);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Só desativa se sair completamente da zona
+    if ((e.target as HTMLElement).classList.contains("products-drop-zone")) {
+      setDragOverCategory(null);
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = async (
+    e: React.DragEvent,
+    categoryId: string,
+    targetIndex: number
+  ) => {
+    e.preventDefault();
+
+    if (!dragDataRef.current) return;
+
+    const { product: draggedProd, categoryId: sourceCategoryId } = dragDataRef.current;
+
+    // Evitar drop na mesma posição
+    if (
+      sourceCategoryId === categoryId &&
+      cardapio.products.indexOf(draggedProd) === targetIndex
+    ) {
+      handleDragEnd();
+      return;
+    }
+
+    try {
+      // Obter os produtos da categoria de destino
+      const targetCategoryProducts = cardapio.products
+        .filter((p) => p.category === categoryId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      // Se moveu para categoria diferente, adicionar produto à nova categoria
+      let updatedProducts = [...cardapio.products];
+
+      if (sourceCategoryId !== categoryId) {
+        // Remover da categoria anterior
+        updatedProducts = updatedProducts.filter((p) => p.id !== draggedProd.id);
+
+        // Adicionar à nova categoria
+        const newProduct = { ...draggedProd, category: categoryId };
+        updatedProducts.push(newProduct);
+      }
+
+      // Reordenar produtos da categoria de destino
+      const destCategoryProducts = updatedProducts
+        .filter((p) => p.category === categoryId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      const draggedProdInDest = destCategoryProducts.find((p) => p.id === draggedProd.id);
+      const draggedProdIndexInDest = destCategoryProducts.indexOf(draggedProdInDest!);
+
+      // Remover do índice anterior
+      if (draggedProdIndexInDest !== -1) {
+        destCategoryProducts.splice(draggedProdIndexInDest, 1);
+      }
+
+      // Inserir no novo índice
+      destCategoryProducts.splice(Math.min(targetIndex, destCategoryProducts.length), 0, draggedProdInDest!);
+
+      // Atualizar order de todos os produtos dessa categoria
+      const reorderedInCategory = destCategoryProducts.map((p, idx) => ({
+        ...p,
+        order: idx,
+      }));
+
+      // Construir novo array de produtos
+      const finalProducts = updatedProducts.map((p) => {
+        const reordered = reorderedInCategory.find((rp) => rp.id === p.id);
+        return reordered || p;
+      });
+
+      // Fazer update otimista
+      await cardapio.reorderProducts(finalProducts);
+      toast.success("Produto reordenado!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
+    }
+
+    handleDragEnd();
   };
 
   // Agrupar produtos por categoria (para exibição estilo cardápio)
@@ -123,11 +233,25 @@ export default function ProdutosPage() {
               )}
 
               {/* Cards dos produtos */}
-              <div className="space-y-3">
-                {cat.products.map((product) => (
+              <div className="space-y-3 products-drop-zone"
+                   onDragOver={(e) => handleDragOver(e, cat.id)}
+                   onDragLeave={handleDragLeave}
+              >
+                {cat.products.map((product, index) => (
                   <div
                     key={product.id}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all"
+                    className={`product-card-container bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all draggable-product ${
+                      draggedProduct?.id === product.id ? "dragging" : ""
+                    } ${dragOverCategory === cat.id && dragOverIndex === index ? "drag-over-item" : ""}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, product, cat.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverCategory(cat.id);
+                      setDragOverIndex(index);
+                    }}
+                    onDrop={(e) => handleDrop(e, cat.id, index)}
                   >
                     <div className="flex">
                       {/* Imagem */}

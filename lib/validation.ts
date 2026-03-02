@@ -18,6 +18,7 @@ export const MenuItemSchema = z.object({
   // A validacao com z.union era muito restritiva e falhava com data URIs grandes
   image: z.string().optional().default(""),
   available: z.boolean().default(true),
+  order: z.coerce.number().optional().default(0),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

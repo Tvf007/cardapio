@@ -35,14 +35,19 @@ export default function CategoriasPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao criar");
     }
-  }, [newCategoryName, visibleCategories, cardapio, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newCategoryName, visibleCategories, cardapio]);
 
   const handleEditCategory = useCallback(async (categoryId: string) => {
     if (!editingCategoryName.trim()) { toast.error("Digite o nome"); return; }
 
     try {
       const existingCat = cardapio.categories.find((c) => c.id === categoryId);
-      const updatedCategory: Category = { id: categoryId, name: editingCategoryName.trim(), order: existingCat?.order ?? 0 };
+      const updatedCategory: Category = {
+        id: categoryId,
+        name: editingCategoryName.trim(),
+        order: existingCat?.order ?? 0,
+      };
       await cardapio.updateCategory(updatedCategory);
       setEditingCategoryId(null);
       setEditingCategoryName("");
@@ -50,7 +55,8 @@ export default function CategoriasPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar");
     }
-  }, [editingCategoryName, cardapio, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingCategoryName, cardapio]);
 
   const handleMoveCategory = useCallback(
     async (categoryId: string, direction: "up" | "down") => {
@@ -73,7 +79,8 @@ export default function CategoriasPage() {
         toast.error(error instanceof Error ? error.message : "Erro ao reordenar");
       }
     },
-    [visibleCategories, cardapio, toast]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleCategories, cardapio]
   );
 
   const handleDeleteCategory = useCallback(
@@ -89,121 +96,167 @@ export default function CategoriasPage() {
         toast.error(error instanceof Error ? error.message : "Erro ao deletar");
       }
     },
-    [cardapio, toast]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cardapio]
   );
 
+  const inputClass =
+    "w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-[#7c4e42] bg-white text-gray-900 text-base font-medium transition-colors placeholder:text-gray-400";
+
   return (
-    <div className="max-w-lg mx-auto space-y-5">
-      {/* Formulário adicionar */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
-            placeholder="Nova categoria..."
-            autoComplete="off"
-            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] focus:border-transparent bg-white text-gray-900 font-medium text-sm"
-          />
+    <div className="w-full space-y-6 pb-10">
+
+      {/* ── FORMULÁRIO NOVA CATEGORIA ── */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-base font-bold text-gray-700 uppercase tracking-widest mb-4">
+          📁 Nova Categoria
+        </h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">
+              Nome da Categoria *
+            </label>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+              placeholder="Ex: Salgados, Doces, Bebidas..."
+              autoComplete="off"
+              className={inputClass}
+            />
+          </div>
           <button
             onClick={handleAddCategory}
-            className="bg-[#7c4e42] text-white px-5 py-3 rounded-xl font-semibold hover:bg-[#5a3a2f] transition-all shadow-md text-sm flex-shrink-0"
+            className="w-full bg-[#7c4e42] text-white py-4 rounded-2xl font-bold text-base hover:bg-[#5a3a2f] active:scale-[0.98] transition-all shadow-md shadow-[#7c4e42]/25"
           >
-            + Criar
+            ✓ Criar Categoria
           </button>
         </div>
       </div>
 
-      {/* Lista */}
-      {visibleCategories.length === 0 ? (
-        <div className="text-center py-16">
-          <span className="text-5xl block mb-3">📁</span>
-          <p className="text-gray-500 font-medium text-sm">Nenhuma categoria criada</p>
+      {/* ── LISTA DE CATEGORIAS ── */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-700 uppercase tracking-widest">
+            📋 Categorias Cadastradas
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            {visibleCategories.length}{" "}
+            {visibleCategories.length === 1 ? "categoria" : "categorias"} · arraste ▲▼ para reordenar
+          </p>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {visibleCategories.map((category, index) => {
-            const productCount = cardapio.products.filter((p) => p.category === category.id).length;
 
-            return (
-              <div key={category.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                {editingCategoryId === category.id ? (
-                  <div className="p-4 flex gap-3">
-                    <input
-                      type="text"
-                      value={editingCategoryName}
-                      onChange={(e) => setEditingCategoryName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleEditCategory(category.id);
-                        if (e.key === "Escape") setEditingCategoryId(null);
-                      }}
-                      className="flex-1 px-4 py-2.5 border border-[#d4a574] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7c4e42] bg-white text-gray-900 font-semibold text-sm"
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => handleEditCategory(category.id)}
-                      className="bg-[#7c4e42] text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[#5a3a2f] transition-all"
-                    >
-                      Salvar
-                    </button>
-                    <button
-                      onClick={() => setEditingCategoryId(null)}
-                      className="text-gray-500 text-sm font-medium px-3 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-4 flex items-center gap-3">
-                    {/* Setas */}
-                    <div className="flex flex-col gap-0.5 flex-shrink-0">
-                      <button
-                        onClick={() => handleMoveCategory(category.id, "up")}
-                        disabled={index === 0}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7c4e42] hover:bg-[#f3ece9] disabled:opacity-15 disabled:cursor-not-allowed transition-all text-xs"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        onClick={() => handleMoveCategory(category.id, "down")}
-                        disabled={index === visibleCategories.length - 1}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7c4e42] hover:bg-[#f3ece9] disabled:opacity-15 disabled:cursor-not-allowed transition-all text-xs"
-                      >
-                        ▼
-                      </button>
-                    </div>
+        {visibleCategories.length === 0 ? (
+          <div className="py-14 text-center text-gray-400">
+            <span className="text-5xl block mb-3">📁</span>
+            <p className="font-medium text-base">Nenhuma categoria criada ainda.</p>
+            <p className="text-sm mt-1">Use o formulário acima para começar.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {visibleCategories.map((category, index) => {
+              const productCount = cardapio.products.filter((p) => p.category === category.id).length;
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-gray-900 text-sm truncate">{category.name}</h4>
-                      <p className="text-xs text-gray-400 mt-0.5">{productCount} {productCount === 1 ? "produto" : "produtos"}</p>
+              return (
+                <li key={category.id} className="px-5 py-4">
+                  {editingCategoryId === category.id ? (
+                    /* ── Modo edição ── */
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleEditCategory(category.id);
+                          if (e.key === "Escape") setEditingCategoryId(null);
+                        }}
+                        className={inputClass}
+                        autoFocus
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleEditCategory(category.id)}
+                          className="flex-1 bg-[#7c4e42] text-white py-3.5 rounded-2xl font-bold text-base hover:bg-[#5a3a2f] transition-all"
+                        >
+                          ✓ Salvar
+                        </button>
+                        <button
+                          onClick={() => setEditingCategoryId(null)}
+                          className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-2xl font-semibold text-base hover:bg-gray-200 transition-all"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    /* ── Visualização normal ── */
+                    <div className="flex items-center gap-4">
 
-                    {/* Ações */}
-                    <div className="flex gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#f3ece9] text-[#7c4e42] hover:bg-[#e8ddd8] transition-all text-sm"
-                        title="Editar"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(category.id)}
-                        className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all text-sm"
-                        title="Deletar"
-                      >
-                        🗑️
-                      </button>
+                      {/* Setas de reordenação */}
+                      <div className="flex flex-col gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => handleMoveCategory(category.id, "up")}
+                          disabled={index === 0}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 text-gray-500 hover:bg-[#f3ece9] hover:text-[#7c4e42] disabled:opacity-20 disabled:cursor-not-allowed transition-all font-bold"
+                          title="Mover para cima"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          onClick={() => handleMoveCategory(category.id, "down")}
+                          disabled={index === visibleCategories.length - 1}
+                          className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 text-gray-500 hover:bg-[#f3ece9] hover:text-[#7c4e42] disabled:opacity-20 disabled:cursor-not-allowed transition-all font-bold"
+                          title="Mover para baixo"
+                        >
+                          ▼
+                        </button>
+                      </div>
+
+                      {/* Número de ordem */}
+                      <div className="w-8 h-8 rounded-full bg-[#f3ece9] text-[#7c4e42] flex items-center justify-center text-sm font-bold flex-shrink-0">
+                        {index + 1}
+                      </div>
+
+                      {/* Nome e contagem */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 text-lg leading-tight truncate">
+                          {category.name}
+                        </p>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          {productCount}{" "}
+                          {productCount === 1 ? "produto" : "produtos"}
+                        </p>
+                      </div>
+
+                      {/* Botões de ação */}
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingCategoryId(category.id);
+                            setEditingCategoryName(category.name);
+                          }}
+                          className="w-12 h-12 flex items-center justify-center rounded-2xl bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-95 transition-all text-xl"
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="w-12 h-12 flex items-center justify-center rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 active:scale-95 transition-all text-xl"
+                          title="Deletar"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
