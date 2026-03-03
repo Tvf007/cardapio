@@ -348,6 +348,7 @@ async function executeSyncFrom(
           method: "GET",
           headers: { "Content-Type": "application/json" },
           externalSignal: signal,
+          cache: "no-store" as RequestCache, // FIX: Bypass browser HTTP cache para garantir dados frescos do Turso
         });
 
         if (!res.ok) {

@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Cardapio - Padaria Freitas",
   description: "Cardapio digital da Padaria e Confeitaria Freitas",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.png", apple: "/icon-192.png" },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

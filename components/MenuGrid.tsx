@@ -68,7 +68,11 @@ export const MenuGrid = memo(function MenuGrid({ items, categories, showCategory
     categories.forEach((cat) => {
       const catItems = categoryMap.get(cat.id);
       if (catItems && catItems.length > 0) {
-        groups.push({ category: cat, items: catItems });
+        // Ordenar produtos dentro da categoria pelo campo order
+        const sortedItems = [...catItems].sort(
+          (a, b) => (a.order ?? 999) - (b.order ?? 999)
+        );
+        groups.push({ category: cat, items: sortedItems });
       }
     });
 

@@ -143,18 +143,16 @@ export async function GET() {
       products: normalizedProducts,
     });
 
-    // CACHE STRATEGY (2026-02-20):
-    // Use stale-while-revalidate to balance freshness + performance
-    // - Serve stale cache for 60s (fast response)
-    // - Revalidate in background (fresh data)
-    // - Falls back to server on cache miss
-    // This avoids race conditions while providing good UX
+    // FIX (2026-03-03): Desativar cache HTTP para garantir dados frescos
+    // O cache anterior (public, max-age=60) causava bug de reordenação:
+    // Após drag-and-drop (POST), o GET retornava dados stale do cache,
+    // fazendo produtos voltarem à posição anterior ao atualizar a página.
+    // Para cardápio pequeno, performance não é impactada sem cache.
     response.headers.set(
       "Cache-Control",
-      "public, max-age=60, stale-while-revalidate=300, stale-if-error=3600"
+      "private, no-cache, no-store, must-revalidate"
     );
-    // Add version tag to force invalidation if needed
-    response.headers.set("X-Cache-Version", "v1");
+    response.headers.set("Pragma", "no-cache");
 
     return response;
   } catch (error) {

@@ -123,6 +123,7 @@ export default function EditarProdutoPage() {
         category,
         available,
         image,
+        order: existingProduct?.order ?? 0,
       };
       await cardapio.updateProduct(product);
 

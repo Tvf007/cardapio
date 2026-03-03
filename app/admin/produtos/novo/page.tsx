@@ -69,6 +69,10 @@ export default function NovoProdutoPage() {
     setSaving(true);
     try {
       const productId = uuid();
+      // Novo produto recebe order no final da categoria
+      const maxOrder = cardapio.products
+        .filter((p) => p.category === category)
+        .reduce((max, p) => Math.max(max, p.order ?? 0), -1);
       const product: MenuItem = {
         id: productId,
         name: name.trim(),
@@ -77,6 +81,7 @@ export default function NovoProdutoPage() {
         category,
         available,
         image,
+        order: maxOrder + 1,
       };
       await cardapio.addProduct(product);
 

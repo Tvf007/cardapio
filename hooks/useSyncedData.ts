@@ -141,11 +141,26 @@ export function useSyncedData(): SyncedDataState & {
   }, []);
 
   const setOptimisticData = useCallback((data: { categories?: Category[]; products?: MenuItem[] }) => {
-    setState((prev) => ({
-      ...prev,
-      categories: data.categories ?? prev.categories,
-      products: data.products ?? prev.products,
-    }));
+    setState((prev) => {
+      const newCategories = data.categories ?? prev.categories;
+      const newProducts = data.products ?? prev.products;
+
+      // FIX (2026-03-03): Salvar no localStorage imediatamente após atualização otimista
+      // Assim, se a página for atualizada antes do servidor responder,
+      // o localStorage já terá a ordem correta (evita flash de ordem antiga)
+      try {
+        localStorage.setItem("cardapio-categories", JSON.stringify(newCategories));
+        localStorage.setItem("cardapio-products", JSON.stringify(newProducts));
+      } catch {
+        // localStorage unavailable
+      }
+
+      return {
+        ...prev,
+        categories: newCategories,
+        products: newProducts,
+      };
+    });
   }, []);
 
   const refresh = useCallback(async (retryCount = 0, maxRetries = 2) => {
@@ -186,7 +201,10 @@ export function useSyncedData(): SyncedDataState & {
       const categories = [...data.categories]
         .filter((c) => c.id !== HIDDEN_CATEGORY_ID)
         .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      const products = visibleProducts;
+      // Ordenar produtos pelo campo order (menor primeiro)
+      const products = [...visibleProducts].sort(
+        (a, b) => (a.order ?? 999) - (b.order ?? 999)
+      );
 
       // Fallback localStorage apenas se servidor não retornou logo
       let finalLogo: string | null = logo;
@@ -295,10 +313,15 @@ export function useSyncedData(): SyncedDataState & {
           .filter((c) => c.id !== HIDDEN_CATEGORY_ID)
           .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
+        // Ordenar produtos pelo campo order (menor primeiro)
+        const sortedProducts = [...visibleProducts].sort(
+          (a, b) => (a.order ?? 999) - (b.order ?? 999)
+        );
+
         setState((prev) => ({
           ...prev,
           categories: sortedCategories,
-          products: visibleProducts,
+          products: sortedProducts,
           logo: logo || prev.logo,
           loading: false, // Temos cache, não precisa mostrar loading
         }));

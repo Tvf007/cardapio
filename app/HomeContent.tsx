@@ -273,8 +273,8 @@ export function HomeContent() {
         </div>
       </main>
 
-      {/* ===== FOOTER ===== */}
-      <footer className="text-white mt-12 sm:mt-16" style={{ background: 'linear-gradient(135deg, #C1272D, #9A1F23)' }}>
+      {/* ===== FOOTER - FREITAS RED ===== */}
+      <footer className="text-white mt-12 sm:mt-16" style={{ background: 'linear-gradient(135deg, #C1272D 0%, #9A1F23 100%)' }}>
         <div className="max-w-5xl mx-auto px-4 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <div>

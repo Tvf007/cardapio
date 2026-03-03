@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCardapio } from "@/contexts/CardapioContext";
 import { useToast } from "@/components/Toast";
-import { MenuItem } from "@/types";
+import { MenuItem } from "@/lib/validation";
 
 // Emojis por categoria
 function getCategoryEmoji(name: string): string {
@@ -161,7 +161,9 @@ export default function ProdutosPage() {
     })
     .map((cat) => ({
       ...cat,
-      products: filteredProducts.filter((p) => p.category === cat.id),
+      products: filteredProducts
+        .filter((p) => p.category === cat.id)
+        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
     }))
     .filter((cat) => cat.products.length > 0);
 

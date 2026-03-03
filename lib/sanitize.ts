@@ -54,6 +54,18 @@ export function sanitizeProduct(product: any): MenuItem {
     throw new Error("Produto inválido");
   }
 
+  // Garantir que order é sempre um número (coerce from string if needed)
+  // CRÍTICO: Sempre tem que ter um valor numérico para garantir persistência da reordenação
+  let order: number;
+  if (typeof product.order === "number") {
+    order = product.order;
+  } else if (typeof product.order === "string") {
+    const parsed = parseInt(product.order, 10);
+    order = isNaN(parsed) ? 0 : parsed;
+  } else {
+    order = 0;
+  }
+
   const sanitized: MenuItem = {
     id: String(product.id || "").trim(),
     name: String(product.name || "").trim(),
@@ -62,6 +74,7 @@ export function sanitizeProduct(product: any): MenuItem {
     category: String(product.category || "").trim(),
     image: product.image ? String(product.image).trim() : "",
     available: product.available === true || product.available === 1,
+    order, // CRÍTICO: Sempre incluir order para persistir reordenação drag-and-drop
     ...(product.created_at && { created_at: String(product.created_at) }),
     ...(product.updated_at && { updated_at: String(product.updated_at) }),
   };

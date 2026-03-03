@@ -65,6 +65,7 @@ export function ProductForm({
       category: categories[0]?.id || "",
       available: true,
       image: "",
+      order: 0,
     }
   );
 
